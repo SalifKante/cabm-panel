@@ -14,10 +14,16 @@ export default defineConfig({
     port: 3031,
     strictPort: true,
     // HMR must point to the same host/port you actually open
-    hmr: {
-      host: "127.0.0.1",
-      protocol: "ws",
-      port: 3031,
-    },
+    // hmr: {
+    //   host: "127.0.0.1",
+    //   protocol: "ws",
+    //   port: 3031,
+    // },
+    hmr: { clientPort: 443 },
+  },
+  preview: {
+    host: "0.0.0.0",
+    port: 4173, // Render will override with $PORT via the script
+    strictPort: false,
   },
 });
