@@ -1,0 +1,14 @@
+{
+    "version": 2,
+    "builds": [
+        { "src": "src/server.js", "use": "@vercel/node" }
+    ],
+    "env": {
+        "MONGODB_URI": "@mongodb_uri",
+        "MONGODB_DB_NAME": "cabmsarl",
+        "PORT": "10000"
+    },
+    "routes": [
+        { "src": "/(.*)", "dest": "src/server.js" }
+    ]
+}

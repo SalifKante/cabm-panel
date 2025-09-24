@@ -14,11 +14,19 @@ app.use(helmet());
 app.use(morgan("tiny"));
 
 // CORS (allow only your sites)
-const allow = (process.env.CORS_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
-app.use(cors({
-  origin: (origin, cb) => (!origin || allow.includes(origin) ? cb(null, true) : cb(new Error("CORS blocked"))),
-  credentials: true
-}));
+const allow = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+app.use(
+  cors({
+    origin: (origin, cb) =>
+      !origin || allow.includes(origin)
+        ? cb(null, true)
+        : cb(new Error("CORS blocked")),
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 
@@ -35,12 +43,14 @@ if (!uri) {
   process.exit(1);
 }
 
+app.get("/", (req, res) => res.json({ message: "👋 Hello from CABM API" }));
+
 connectMongo({ uri, dbName })
   .then(() => {
     console.log("✅ Mongo connected to DB:", dbName);
     app.listen(PORT, () => console.log(`🚀 API listening on :${PORT}`));
   })
-  .catch(err => {
+  .catch((err) => {
     console.error("❌ Mongo connection error:", err.message);
     process.exit(1);
   });
