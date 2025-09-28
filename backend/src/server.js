@@ -1,56 +1,28 @@
+// src/server.js
 import "dotenv/config";
 import express from "express";
-import helmet from "helmet";
 import cors from "cors";
-import morgan from "morgan";
-import { connectMongo } from "./db.js";
-// import health from "./routes/health.js";
+import connectDB from "./config/mongodb.js";
+import connectCloudinary from "./config/cloudinary.js";
+import adminRoute from "./routes/adminRoute.js";
+
 
 const app = express();
-app.set("trust proxy", 1);
+const port = process.env.PORT || 8000;
+connectDB();
+connectCloudinary();
 
-// security & logs
-app.use(helmet());
-app.use(morgan("tiny"));
-
-// CORS (allow only your sites)
-const allow = (process.env.CORS_ORIGINS || "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-app.use(
-  cors({
-    origin: (origin, cb) =>
-      !origin || allow.includes(origin)
-        ? cb(null, true)
-        : cb(new Error("CORS blocked")),
-    credentials: true,
-  })
-);
-
+// base middleware
 app.use(express.json());
+app.use(cors())
 
-// routes
-// app.use(health);
+// api endpoints
+app.get("/", (req, res) => {
+  res.send("API is running...");
+});
 
-// boot
-const PORT = process.env.PORT || 10000;
-const uri = process.env.MONGODB_URI;
-const dbName = process.env.MONGODB_DB_NAME || "cabm";
+// admin routes
+app.use("/api/admin", adminRoute);
+// http://localhost:3033/api/admin/create-activity
 
-if (!uri) {
-  console.error("❌ MONGODB_URI is missing");
-  process.exit(1);
-}
-
-app.get("/", (req, res) => res.json({ message: "👋 Hello from CABM API" }));
-
-connectMongo({ uri, dbName })
-  .then(() => {
-    console.log("✅ Mongo connected to DB:", dbName);
-    app.listen(PORT, () => console.log(`🚀 API listening on :${PORT}`));
-  })
-  .catch((err) => {
-    console.error("❌ Mongo connection error:", err.message);
-    process.exit(1);
-  });
+app.listen(port, () => {  console.log(`Server is running on port ${port}`);  });
