@@ -1,23 +1,52 @@
-import { Routes, Route, Link } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
-import { ToastContainer, toast} from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import Navbar from "./components/Navbar";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { AdminContext } from "./context/AdminContext";
 import { useContext } from "react";
-import Navbar from "./pages/Navbar";
+import Sidebar from "./components/Sidebar";
+import Dashboard from "./pages/Admin/Dashboard";
+import AddActivity from "./pages/Admin/AddActivity";
+import ActivityList from "./pages/Admin/ActivityList";
 
 export default function App() {
+  const { aToken } = useContext(AdminContext);
 
-  const {aToken} = useContext(AdminContext);
-  return aToken ? (
-    <div className="bg-[#F8F9FD]">
-      <ToastContainer />
-      <Navbar />
-    </div>
-  ):(
+  return (
     <>
-      <Login />
-      <ToastContainer />
+      {/* Global ToastContainer — never unmounted */}
+      <ToastContainer
+        position="top-right"
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+        draggable
+        theme="colored"
+        limit={3}
+      />
+
+      {aToken ? (
+        <div className="bg-[#F8F9FD]">
+          <Navbar />
+          <div className="flex items-start">
+            <Sidebar />
+            {/* <Routes>...</Routes> */}
+            <Routes>
+              <Route path="/" element={<></>} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/add-activity" element={<AddActivity />} />
+              <Route path="/activity-list" element={<ActivityList />} />
+            </Routes>
+          </div>
+          {/* Add your protected routes here if needed */}
+        </div>
+      ) : (
+        <>
+          <Login />
+          {/* no extra ToastContainer here */}
+        </>
+      )}
     </>
-  )
+  );
 }

@@ -10,6 +10,13 @@ lerna-debug.log*
 # Dependencies (ignore everywhere)
 node_modules/
 
+# Backend
+backend/.env
+
+# Frontend (cabm-admin)
+cabm-admin/.env.production
+cabm-admin/.env.development
+
 # Build outputs (ignore everywhere by default) 
 dist/
 # ...but keep the admin build
