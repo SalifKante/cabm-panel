@@ -7,7 +7,7 @@ const ActivitySchema = new mongoose.Schema(
     place: { type: String, required: true, trim: true, maxlength: 120 },
     description: { type: String, required: true, trim: true, maxlength: 2000 },
 
-    image: { type: String, default: "" },
+    image: { type: [String], default: [] },
     tags: { type: [String], default: [] }
   },
   { timestamps: true }
