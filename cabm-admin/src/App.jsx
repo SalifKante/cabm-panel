@@ -36,7 +36,7 @@ export default function App() {
               <Route path="/" element={<></>} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/add-activity" element={<AddActivity />} />
-              <Route path="/activity-list" element={<ActivityList />} />
+              <Route path="/activities" element={<ActivityList />} />
             </Routes>
           </div>
           {/* Add your protected routes here if needed */}

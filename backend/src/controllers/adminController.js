@@ -133,4 +133,53 @@ const adminLogin = async (req, res) => {
   }
 };
 
-export { createActivity, adminLogin };
+// API to delete an activity
+const deleteActivity = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id || !validator.isMongoId(id)) {
+      return res.status(400).json({ success: false, message: "ID invalide." });
+    }
+    const activity = await activityModel.findById(id);
+    if (!activity) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Activité non trouvée." });
+    }
+    await activityModel.findByIdAndDelete(id);
+    return res.json({
+      success: true,
+      message: "Activité supprimée avec succès.",
+    });
+  } catch (error) {
+    console.error("Error deleting activity:", error);
+    return res.status(500).json({ success: false, message: "Erreur serveur." });
+  }
+};
+
+// API to get count of activities
+const getActivitiesCount = async (req, res) => {
+  try {
+    const count = await activityModel.countDocuments();
+    res.json({ success: true, count });
+  } catch (error) {
+    console.error("Error fetching activities count:", error);
+    res.status(500).json({ success: false, message: "Server error." });
+  }
+};
+
+
+
+// API to get all activities (for admin)
+// (not used currently, but can be useful for admin panel)
+const getAllActivities = async (req, res) => {
+  try {
+    const activities = await activityModel.find().sort({ date: -1 });
+    res.json({ success: true, activities });
+  } catch (error) {
+    console.error("Error fetching activities:", error);
+    res.status(500).json({ success: false, message: "Server error." });
+  }
+};
+
+export { createActivity, adminLogin, getAllActivities, deleteActivity, getActivitiesCount };
