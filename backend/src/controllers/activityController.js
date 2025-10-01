@@ -139,6 +139,26 @@ const getActivitiesCount = async (req, res) => {
   }
 };
 
+// API to get activity by ID
+const getActivityById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id || !validator.isMongoId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid ID." });
+    }
+    const activity = await activityModel.findById(id);
+    if (!activity) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Activity not found." });
+    }
+    res.json({ success: true, activity });
+  } catch (error) {
+    console.error("Error fetching activity by ID:", error);
+    res.status(500).json({ success: false, message: "Server error." });
+  }
+};
+
 
 
 // API to get all activities (for admin)
@@ -154,4 +174,4 @@ const getAllActivities = async (req, res) => {
 };
 
 
-export { createActivity, getAllActivities, deleteActivity, getActivitiesCount };
+export { createActivity, getActivityById, getAllActivities, deleteActivity, getActivitiesCount };

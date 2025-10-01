@@ -17,8 +17,10 @@ app.use(
   cors({
     origin: [
       "http://127.0.0.1:3031",
+      "http://127.0.0.1:3030",
       "https://cabm-panel.vercel.app",
       "https://admin.cabmsarl.org",
+      "https://www.cabmsarl.org",
     ],
   })
 );

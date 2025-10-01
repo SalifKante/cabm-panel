@@ -7,6 +7,7 @@ import {
   createActivity,
   deleteActivity,
   getActivitiesCount,
+  getActivityById,
   getAllActivities,
 } from "../controllers/activityController.js";
 
@@ -29,7 +30,9 @@ const adminRoute = express.Router();
 /* ------------------------ ACTIVITY ROUTES (existing) ----------------------- */
 adminRoute.post("/create-activity", authAdmin, upload.array("image", 10), createActivity);
 adminRoute.post("/login", adminLogin);
-adminRoute.post("/all-activities", authAdmin, getAllActivities);
+// adminRoute.post("/all-activities", authAdmin, getAllActivities);
+adminRoute.get("/activity/:id", getActivityById);
+adminRoute.post("/all-activities", getAllActivities);
 adminRoute.delete("/activity/:id", authAdmin, deleteActivity);
 adminRoute.get("/activities-count", authAdmin, getActivitiesCount);
 
@@ -42,7 +45,8 @@ adminRoute.get("/activities-count", authAdmin, getActivitiesCount);
 adminRoute.post("/create-product", authAdmin, upload.array("image", 10), createProduct);
 
 /** List products (kept as POST to mirror your activities route) */
-adminRoute.post("/all-products", authAdmin, listProducts);
+// adminRoute.post("/all-products", authAdmin, listProducts);
+adminRoute.post("/all-products", listProducts);
 
 // Update product (partial update, e.g. only title or only images, etc.)
 adminRoute.put("/product/:id", authAdmin, upload.array("image", 10), updateProduct);
