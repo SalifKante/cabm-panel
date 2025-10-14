@@ -74,7 +74,7 @@ adminRoute.patch("/product/:id/status", authAdmin, patchProductStatus);
 /* ------------------------- SERVICES ROUTES (new) ---------------------------- */
 
 // Public
-adminRoute.get("/all-services", listPublicServices);
+adminRoute.get("/all-services", authAdmin, listPublicServices);
 
 //get all services
 adminRoute.get("/all-services", authAdmin, listAllServices);

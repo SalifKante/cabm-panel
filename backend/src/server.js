@@ -6,6 +6,7 @@ import cors from "cors";
 import connectDB from "./config/mongodb.js";
 import connectCloudinary from "./config/cloudinary.js";
 import adminRoute from "./routes/adminRoute.js";
+import publicRoute from "./routes/publicRoute.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -76,6 +77,8 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/admin", adminRoute);
+app.use("/api/public", publicRoute);
+
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
