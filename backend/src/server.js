@@ -1,10 +1,18 @@
-// src/server.js
-import "dotenv/config";
+import dotenv from "dotenv";
+import { fileURLToPath } from "url"; // <= you were missing this import
+import path from "path";
+
 import express from "express";
 import cors from "cors";
 import connectDB from "./config/mongodb.js";
 import connectCloudinary from "./config/cloudinary.js";
 import adminRoute from "./routes/adminRoute.js";
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, "../.env") });
 
 const app = express();
 const port = process.env.PORT || 8000;

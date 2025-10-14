@@ -20,6 +20,17 @@ import {
   updateProduct
 } from "../controllers/productController.js";
 
+import {
+  countServices,
+  createService,
+  deleteService,
+  listAllServices,
+  listPublicServices,
+  setServiceStatus,
+  updateService,
+} from "../controllers/serviceController.js";
+
+
 import upload from "../middleware/multer.js";
 
 import authAdmin from "../middleware/authAdmin.js";
@@ -59,6 +70,25 @@ adminRoute.get("/products-count", authAdmin, getProductsCount);
 
 // Update product status (activate/deactivate)
 adminRoute.patch("/product/:id/status", authAdmin, patchProductStatus);
+
+/* ------------------------- SERVICES ROUTES (new) ---------------------------- */
+
+// Public
+adminRoute.get("/all-services", listPublicServices);
+
+//get all services
+adminRoute.get("/all-services", authAdmin, listAllServices);
+// create service
+adminRoute.post("/create-service", authAdmin, createService);
+// update service
+adminRoute.patch("/service/:id", authAdmin, updateService);
+// set service status (mask/unmask)
+adminRoute.patch("/service/:id/status", authAdmin, setServiceStatus);
+// delete service
+adminRoute.delete("/service/:id", authAdmin, deleteService);
+// count services
+adminRoute.get("/services-count", authAdmin, countServices);
+
 
 
 export default adminRoute;

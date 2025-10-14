@@ -1,0 +1,25 @@
+{
+  "name": "panel",
+  "version": "1.0.0",
+  "description": "cabm administration",
+  "main": "server.js",
+ "scripts": {
+    "server": "nodemon backend/src/server.js",
+    "admin": "npm --prefix cabm-admin run dev",
+    "dev": "concurrently -k -n server,client,admin -c green,cyan,magenta \"npm run server\" \"npm run admin\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SalifKante/cabm-panel.git"
+  },
+  "author": "Salif Kante",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SalifKante/cabm-panel/issues"
+  },
+  "homepage": "https://github.com/SalifKante/cabm-panel#readme",
+  "dependencies": {
+    "concurrently": "^9.2.1",
+    "nodemon": "^3.1.10"
+  }
+}

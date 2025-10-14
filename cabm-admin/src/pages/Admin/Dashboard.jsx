@@ -1,7 +1,8 @@
+// src/pages/Admin/Dashboard.jsx
 import React, { useContext, useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { AdminContext } from "../../context/AdminContext";
-import { FiRefreshCw, FiList, FiPackage } from "react-icons/fi";
+import { FiRefreshCw, FiList, FiPackage, FiTool } from "react-icons/fi";
 
 const StatCard = ({ label, value, Icon }) => (
   <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -22,6 +23,7 @@ const Dashboard = () => {
 
   const [activitiesCount, setActivitiesCount] = useState(null);
   const [productsCount, setProductsCount] = useState(null);
+  const [servicesCount, setServicesCount] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -32,17 +34,22 @@ const Dashboard = () => {
     setErr("");
 
     try {
-      const [actRes, prodRes] = await Promise.all([
+      const [actRes, prodRes, servRes] = await Promise.all([
         axios.get(`${backendUrl}/api/admin/activities-count`, {
           headers: { aToken },
         }),
         axios.get(`${backendUrl}/api/admin/products-count`, {
           headers: { aToken },
         }),
+        // NEW: count services
+        axios.get(`${backendUrl}/api/admin/services-count`, {
+          headers: { aToken },
+        }),
       ]);
 
       setActivitiesCount(actRes?.data?.count ?? 0);
       setProductsCount(prodRes?.data?.count ?? 0);
+      setServicesCount(servRes?.data?.count ?? 0);
     } catch (e) {
       setErr(
         e?.response?.data?.message ||
@@ -50,6 +57,7 @@ const Dashboard = () => {
       );
       setActivitiesCount(0);
       setProductsCount(0);
+      setServicesCount(0);
     } finally {
       setLoading(false);
     }
@@ -90,21 +98,24 @@ const Dashboard = () => {
       )}
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Laisser Activités (total) */}
         <StatCard
           label="Activités (total)"
           value={loading ? "—" : activitiesCount}
           Icon={FiList}
         />
 
-        {/* Ajouter Produits (total) à côté */}
         <StatCard
           label="Produits (total)"
           value={loading ? "—" : productsCount}
           Icon={FiPackage}
         />
 
-        {/* Vous pouvez ajouter d'autres cartes ici si nécessaire */}
+        {/* NEW: Services (total) */}
+        <StatCard
+          label="Services (total)"
+          value={loading ? "—" : servicesCount}
+          Icon={FiTool}
+        />
       </div>
     </div>
   );

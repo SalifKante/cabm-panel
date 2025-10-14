@@ -1,3 +1,4 @@
+// src/App.jsx
 import { Routes, Route } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -14,9 +15,10 @@ import AddActivity from "./pages/Admin/AddActivity";
 import ActivityList from "./pages/Admin/ActivityList";
 import AddProduct from "./pages/Admin/AddProduct";
 import ProductList from "./pages/Admin/ProductList";
-import EditProduct from "./pages/Admin/EditProduct ";
+import EditProduct from "./pages/Admin/EditProduct.jsx"; // ← fixed trailing space
 
-// (Optional placeholders for products)
+// Services (Admin)
+import ServiceTable from "./pages/Admin/ServiceTable"; // ← add this page
 
 export default function App() {
   const { aToken } = useContext(AdminContext);
@@ -61,15 +63,22 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+
+                {/* Activities */}
                 <Route path="/add-activity" element={<AddActivity />} />
                 <Route path="/activities" element={<ActivityList />} />
+
                 {/* Products */}
                 <Route path="/products/add" element={<AddProduct />} />
                 <Route path="/products" element={<ProductList />} />
-                <Route
-                  path="/edit-product/:id"
-                  element={<EditProduct />}
-                />{" "}
+                <Route path="/edit-product/:id" element={<EditProduct />} />
+
+                {/* Services (Admin) */}
+                <Route path="/services" element={<ServiceTable />} />
+                {/* If you later want dedicated pages:
+                    <Route path="/services/new" element={<ServiceCreate />} />
+                    <Route path="/services/:id/edit" element={<ServiceEdit />} />
+                 */}
               </Routes>
             </main>
           </div>

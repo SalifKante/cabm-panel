@@ -46,6 +46,15 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: "/products", label: "Liste des Produits", Icon: FiPackage, end: true },
       ],
     },
+    {
+      title: "Services",
+      items: [
+        // We manage create/edit in the table modal, so one entry is enough
+        { to: "/services", label: "Liste des Services", Icon: FiList, end: true },
+        // If you later add a dedicated create route, uncomment below:
+        // { to: "/services/new", label: "Ajouter un Service", Icon: FiPlusCircle },
+      ],
+    },
   ];
 
   return (
