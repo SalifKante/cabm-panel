@@ -73,20 +73,17 @@ adminRoute.patch("/product/:id/status", authAdmin, patchProductStatus);
 
 /* ------------------------- SERVICES ROUTES (new) ---------------------------- */
 
-// Public
-adminRoute.get("/all-services", authAdmin, listPublicServices);
-
-//get all services
+// GET (protected)
 adminRoute.get("/all-services", authAdmin, listAllServices);
-// create service
+// CREATE
 adminRoute.post("/create-service", authAdmin, createService);
-// update service
+// UPDATE
 adminRoute.patch("/service/:id", authAdmin, updateService);
-// set service status (mask/unmask)
+// STATUS
 adminRoute.patch("/service/:id/status", authAdmin, setServiceStatus);
-// delete service
+// DELETE
 adminRoute.delete("/service/:id", authAdmin, deleteService);
-// count services
+// COUNT
 adminRoute.get("/services-count", authAdmin, countServices);
 
 
