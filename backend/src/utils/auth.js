@@ -43,12 +43,27 @@ export function generateRandomToken() {
  * browser to actually clear the cookie). `secure` and `domain` come from env.
  */
 function baseCookieOptions() {
-  const secure = String(process.env.COOKIE_SECURE).toLowerCase() === "true";
+  // SameSite controls whether the cookie is sent on cross-site requests.
+  //  - "lax"  (default): site and API share the same parent domain (e.g.
+  //    www.cabmsarl.org + api.cabmsarl.org). Most reliable.
+  //  - "none": site and API are on DIFFERENT sites (e.g. www.cabmsarl.org calling
+  //    cabm-panel.vercel.app). Requires Secure, and the cookie must NOT be scoped
+  //    to a domain the API host doesn't belong to — so leave COOKIE_DOMAIN unset.
+  // Set COOKIE_SAMESITE=none on the backend when the public site calls the bare
+  // Vercel URL instead of an api.cabmsarl.org subdomain.
+  const sameSite = (process.env.COOKIE_SAMESITE || "lax").toLowerCase();
+
+  // SameSite=None is invalid without Secure, so force Secure on in that case.
+  const secure =
+    String(process.env.COOKIE_SECURE).toLowerCase() === "true" ||
+    sameSite === "none";
+
   const domain = process.env.COOKIE_DOMAIN || undefined;
+
   return {
     httpOnly: true,
     secure,
-    sameSite: "lax",
+    sameSite,
     path: "/",
     ...(domain ? { domain } : {}),
   };
