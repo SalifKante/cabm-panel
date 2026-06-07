@@ -18,6 +18,7 @@ const TITLES = {
   "/blog/new": "Nouvel article",
   "/comments": "Modération des commentaires",
   "/services": "Gestion des services",
+  "/users": "Gestion des utilisateurs",
   "/profile": "Mon profil",
 };
 

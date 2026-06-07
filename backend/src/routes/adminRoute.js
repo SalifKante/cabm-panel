@@ -37,9 +37,18 @@ import {
   changeAdminPassword,
 } from "../controllers/adminProfileController.js";
 
+import {
+  listUsers,
+  getUsersStats,
+  updateUserRole,
+  setUserVerified,
+  deleteUser,
+} from "../controllers/userAdminController.js";
+
 import upload from "../middleware/multer.js";
 
 import authAdmin from "../middleware/authAdmin.js";
+import requireAdminAny from "../middleware/adminBridge.js";
 
 
 const adminRoute = express.Router();
@@ -52,6 +61,15 @@ adminRoute.post("/login", adminLogin);
 adminRoute.get("/profile", authAdmin, getAdminProfile);
 adminRoute.put("/profile", authAdmin, upload.single("avatar"), updateAdminProfile);
 adminRoute.put("/change-password", authAdmin, changeAdminPassword);
+
+/* ---------------------------- USER MANAGEMENT ------------------------------ */
+// requireAdminAny → works with both the legacy aToken (panel) and cookie-JWT admin.
+// Declare /users/stats before the :id routes so it isn't shadowed.
+adminRoute.get("/users/stats", requireAdminAny, getUsersStats);
+adminRoute.get("/users", requireAdminAny, listUsers);
+adminRoute.patch("/users/:id/role", requireAdminAny, updateUserRole);
+adminRoute.patch("/users/:id/verify", requireAdminAny, setUserVerified);
+adminRoute.delete("/users/:id", requireAdminAny, deleteUser);
 // adminRoute.post("/all-activities", authAdmin, getAllActivities);
 adminRoute.get("/activity/:id", getActivityById);
 adminRoute.post("/all-activities", getAllActivities);

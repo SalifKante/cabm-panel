@@ -32,6 +32,9 @@ import ServiceTable from "./pages/Admin/ServiceTable"; // ← add this page
 // Profile (Admin)
 import Profile from "./pages/Admin/Profile";
 
+// Users (Admin)
+import Users from "./pages/Admin/Users";
+
 export default function App() {
   const { aToken } = useContext(AdminContext);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -114,6 +117,9 @@ export default function App() {
 
                 {/* Profile (Admin) */}
                 <Route path="/profile" element={<Profile />} />
+
+                {/* Users (Admin) */}
+                <Route path="/users" element={<Users />} />
                 {/* If you later want dedicated pages:
                     <Route path="/services/new" element={<ServiceCreate />} />
                     <Route path="/services/:id/edit" element={<ServiceEdit />} />

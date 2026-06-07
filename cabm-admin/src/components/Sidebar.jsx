@@ -10,6 +10,7 @@ import {
   FiFileText,
   FiMessageSquare,
   FiTool,
+  FiUsers,
   FiLogOut,
   FiChevronLeft,
   FiChevronRight,
@@ -57,6 +58,10 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
     {
       title: "Services",
       items: [{ to: "/services", label: "Liste des Services", Icon: FiTool, end: true }],
+    },
+    {
+      title: "Utilisateurs",
+      items: [{ to: "/users", label: "Utilisateurs", Icon: FiUsers }],
     },
   ];
 
