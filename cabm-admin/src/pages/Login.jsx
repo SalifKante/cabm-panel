@@ -2,21 +2,21 @@ import React, { useContext, useMemo, useState } from "react";
 import { AdminContext } from "../context/AdminContext";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { useNavigate } from "react-router-dom";
+import { FiMail, FiLock, FiEye, FiEyeOff, FiAlertCircle } from "react-icons/fi";
 
 const Login = () => {
-  const [state] = useState("Admin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState({ email: false, password: false });
   const [submitting, setSubmitting] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
+  const [loginError, setLoginError] = useState(""); // inline server-side error
 
   const navigate = useNavigate();
   const { setAToken, backendUrl } = useContext(AdminContext);
 
-  // --- Validation helpers ----------------------------------------------------
+  // --- Validation ---
   const isEmail = (v = "") => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(v.trim());
 
   const errors = useMemo(() => {
@@ -33,148 +33,183 @@ const Login = () => {
   const showEmailError = touched.email && !!errors.email;
   const showPasswordError = touched.password && !!errors.password;
 
-  // --- Submit ---------------------------------------------------------------
+  // --- Submit (auth logic unchanged: POST /api/admin/login → aToken) ---
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    setLoginError("");
     setTouched({ email: true, password: true });
 
     if (Object.keys(errors).length) {
-      const firstMsg = errors.email || errors.password || "Veuillez corriger les erreurs.";
-      toast.error(firstMsg);
+      setLoginError(errors.email || errors.password || "Veuillez corriger les erreurs.");
       return;
     }
 
     if (!backendUrl) {
-      toast.error("URL du serveur non définie. Vérifiez votre configuration.");
+      setLoginError("URL du serveur non définie. Vérifiez votre configuration.");
       return;
     }
 
     try {
       setSubmitting(true);
+      const { data } = await axios.post(`${backendUrl}/api/admin/login`, {
+        email: email.trim(),
+        password,
+      });
 
-      if (state === "Admin") {
-        const { data } = await axios.post(`${backendUrl}/api/admin/login`, {
-          email: email.trim(),
-          password,
-        });
-
-        if (data?.success && data?.token) {
-          // Toast first so it renders even if layout changes
-          toast.success("Connexion réussie. Bienvenue !");
-
-          // Persist token and update context
-          localStorage.setItem("aToken", data.token);
-          setAToken(data.token);
-
-          // Navigate to dashboard (slight delay lets toast mount in root)
-          setTimeout(() => {
-            navigate("/dashboard", { replace: true });
-          }, 50);
-        } else {
-          const msg = data?.message || "Échec de la connexion.";
-          toast.error(msg);
-        }
+      if (data?.success && data?.token) {
+        toast.success("Connexion réussie. Bienvenue !");
+        localStorage.setItem("aToken", data.token);
+        setAToken(data.token);
+        setTimeout(() => navigate("/dashboard", { replace: true }), 50);
+      } else {
+        setLoginError(data?.message || "Échec de la connexion.");
       }
     } catch (err) {
-      const apiMsg =
+      setLoginError(
         err?.response?.data?.message ||
-        err?.message ||
-        "Une erreur est survenue lors de la connexion.";
-      toast.error(apiMsg);
+          err?.message ||
+          "Une erreur est survenue lors de la connexion."
+      );
       console.error("Error during login:", err);
     } finally {
       setSubmitting(false);
     }
   };
 
+  const inputBase =
+    "w-full rounded-xl border bg-white pl-10 pr-3 py-2.5 text-sm outline-none transition";
+  const inputOk = "border-slate-300 focus:border-primary focus:ring-2 focus:ring-primary/20";
+  const inputErr = "border-red-400 focus:ring-2 focus:ring-red-200";
+
   return (
-    <form onSubmit={handleSubmit} className="min-h-[80vh] flex items-center">
-      <div className="flex flex-col gap-3 m-auto items-start p-8 min-w-[340px] sm:min-w-96 border rounded-xl text-sm shadow-lg">
-        <p className="text-2xl font-semibold m-auto">
-          <span className="text-primary">Connexion {state}</span>
-        </p>
-
-        {/* Email */}
-        <div className="w-full">
-          <label htmlFor="email" className="block">
-            Email
-          </label>
-          <input
-            id="email"
-            onChange={(e) => setEmail(e.target.value)}
-            onBlur={() => setTouched((t) => ({ ...t, email: true }))}
-            value={email}
-            className={`border rounded w-full p-2 mt-1 outline-none ${
-              showEmailError ? "border-red-500" : "border-[#DADADA] focus:border-primary"
-            }`}
-            type="email"
-            autoComplete="email"
-            inputMode="email"
-            aria-invalid={!!showEmailError}
-            aria-describedby="email-error"
+    <div className="min-h-screen flex items-center justify-center bg-[#F8F9FD] px-4 py-10">
+      <div className="w-full max-w-md">
+        {/* Brand */}
+        <div className="mb-6 flex flex-col items-center">
+          <img
+            src="/logo/logo1.jpg"
+            alt="CABM"
+            className="h-16 w-16 rounded-full border-2 border-white object-cover shadow-md ring-1 ring-slate-200"
           />
-          {showEmailError && (
-            <p id="email-error" className="text-red-600 text-xs mt-1">
-              {errors.email}
-            </p>
-          )}
+          <h1 className="mt-3 text-xl font-semibold text-slate-800">
+            Administration CABM
+          </h1>
+          <p className="text-sm text-slate-500">
+            Complexe Agro Business Mali
+          </p>
         </div>
 
-        {/* Password with eye toggle */}
-        <div className="w-full">
-          <label htmlFor="password" className="block">
-            Mot de passe
-          </label>
+        {/* Card */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
+          <h2 className="mb-1 text-lg font-semibold text-slate-800">Connexion</h2>
+          <p className="mb-5 text-sm text-slate-500">
+            Connectez-vous pour accéder au tableau de bord.
+          </p>
 
-          <div className="relative">
-            <input
-              id="password"
-              onChange={(e) => setPassword(e.target.value)}
-              onBlur={() => setTouched((t) => ({ ...t, password: true }))}
-              value={password}
-              className={`border rounded w-full p-2 mt-1 pr-10 outline-none ${
-                showPasswordError ? "border-red-500" : "border-[#DADADA] focus:border-primary"
-              }`}
-              type={showPwd ? "text" : "password"}
-              autoComplete="current-password"
-              aria-invalid={!!showPasswordError}
-              aria-describedby="password-error"
-              minLength={8}
-            />
+          {/* Inline error */}
+          {loginError && (
+            <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+              <FiAlertCircle className="mt-0.5 shrink-0" />
+              <span>{loginError}</span>
+            </div>
+          )}
 
-            <button
-              type="button"
-              onClick={() => setShowPwd((s) => !s)}
-              aria-label={showPwd ? "Masquer le mot de passe" : "Afficher le mot de passe"}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500"
-            >
-              {showPwd ? (
-                <AiOutlineEyeInvisible size={20} aria-hidden="true" />
-              ) : (
-                <AiOutlineEye size={20} aria-hidden="true" />
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            {/* Email */}
+            <div>
+              <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
+                Email
+              </label>
+              <div className="relative">
+                <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+                  placeholder="admin@cabmsarl.org"
+                  className={`${inputBase} ${showEmailError ? inputErr : inputOk}`}
+                  aria-invalid={!!showEmailError}
+                />
+              </div>
+              {showEmailError && (
+                <p className="mt-1 text-xs text-red-600">{errors.email}</p>
               )}
-            </button>
-          </div>
+            </div>
 
-          {showPasswordError && (
-            <p id="password-error" className="text-red-600 text-xs mt-1">
-              {errors.password}
-            </p>
-          )}
+            {/* Password */}
+            <div>
+              <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
+                Mot de passe
+              </label>
+              <div className="relative">
+                <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="password"
+                  type={showPwd ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+                  placeholder="••••••••"
+                  className={`${inputBase} pr-10 ${showPasswordError ? inputErr : inputOk}`}
+                  aria-invalid={!!showPasswordError}
+                  minLength={8}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd((s) => !s)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+                  aria-label={showPwd ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                >
+                  {showPwd ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                </button>
+              </div>
+              {showPasswordError && (
+                <p className="mt-1 text-xs text-red-600">{errors.password}</p>
+              )}
+            </div>
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitting && (
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    d="M4 12a8 8 0 018-8"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              )}
+              {submitting ? "Connexion en cours…" : "Se connecter"}
+            </button>
+          </form>
         </div>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className={`w-full py-2 rounded-md text-base text-white transition ${
-            submitting ? "bg-primary-400 cursor-not-allowed" : "bg-primary-700 hover:bg-primary-800"
-          }`}
-        >
-          {submitting ? "Connexion en cours…" : "Se connecter"}
-        </button>
+        {/* Footer accent */}
+        <p className="mt-6 text-center text-xs text-slate-400">
+          © {new Date().getFullYear()} CABM — Bamako, Mali ·{" "}
+          <span className="text-amber-500 font-medium">Espace administrateur</span>
+        </p>
       </div>
-    </form>
+    </div>
   );
 };
 

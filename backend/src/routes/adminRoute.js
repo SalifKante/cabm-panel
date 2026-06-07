@@ -31,6 +31,12 @@ import {
 } from "../controllers/serviceController.js";
 
 
+import {
+  getAdminProfile,
+  updateAdminProfile,
+  changeAdminPassword,
+} from "../controllers/adminProfileController.js";
+
 import upload from "../middleware/multer.js";
 
 import authAdmin from "../middleware/authAdmin.js";
@@ -41,6 +47,11 @@ const adminRoute = express.Router();
 /* ------------------------ ACTIVITY ROUTES (existing) ----------------------- */
 adminRoute.post("/create-activity", authAdmin, upload.array("image", 10), createActivity);
 adminRoute.post("/login", adminLogin);
+
+/* --------------------------- ADMIN PROFILE ROUTES -------------------------- */
+adminRoute.get("/profile", authAdmin, getAdminProfile);
+adminRoute.put("/profile", authAdmin, upload.single("avatar"), updateAdminProfile);
+adminRoute.put("/change-password", authAdmin, changeAdminPassword);
 // adminRoute.post("/all-activities", authAdmin, getAllActivities);
 adminRoute.get("/activity/:id", getActivityById);
 adminRoute.post("/all-activities", getAllActivities);

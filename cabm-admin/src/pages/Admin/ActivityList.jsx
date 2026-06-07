@@ -2,6 +2,7 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { Link } from "react-router-dom";
 import { AdminContext } from "../../context/AdminContext";
 import {
   FiRefreshCw,
@@ -9,8 +10,13 @@ import {
   FiMapPin,
   FiCalendar,
   FiTrash2,
-  FiX,
+  FiPlusCircle,
+  FiCompass,
+  FiImage,
+  FiChevronLeft,
+  FiChevronRight,
   FiAlertTriangle,
+  FiX,
 } from "react-icons/fi";
 
 /* -------------------- utils -------------------- */
@@ -34,18 +40,6 @@ const useDebounced = (value, delay = 300) => {
   }, [value, delay]);
   return deb;
 };
-
-/* -------------------- skeleton -------------------- */
-const CardSkeleton = () => (
-  <div className="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-    <div className="h-32 sm:h-40 bg-gray-100 animate-pulse" />
-    <div className="p-3 sm:p-4 space-y-2">
-      <div className="h-4 bg-gray-100 rounded w-3/4 animate-pulse" />
-      <div className="h-3.5 bg-gray-100 rounded w-1/2 animate-pulse" />
-      <div className="h-3.5 bg-gray-100 rounded w-full animate-pulse" />
-    </div>
-  </div>
-);
 
 /* ---------- pick only the first image, from multiple possible shapes ---------- */
 const getFirstImage = (a) => {
@@ -72,99 +66,44 @@ const getFirstImage = (a) => {
   return null;
 };
 
-/* -------------------- tiny spinner -------------------- */
-const Spinner = () => (
-  <div className="inline-block h-5 w-5 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
-);
-
-/* -------------------- activity card -------------------- */
-const ActivityCard = ({ a, onAskDelete }) => {
+/* -------------------- thumbnail -------------------- */
+const Thumb = ({ a, className }) => {
   const cover = getFirstImage(a);
-  const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
-
   return (
-    <div className="rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition bg-white">
-      {/* Image area with spinner overlay */}
+    <div
+      className={`overflow-hidden rounded-xl bg-gray-100 flex items-center justify-center ${className}`}
+    >
       {cover && !imgError ? (
-        <div className="relative h-36 sm:h-44 w-full bg-gray-100">
-          {!imgLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Spinner />
-            </div>
-          )}
-          <img
-            src={cover}
-            alt={a?.title || "activity"}
-            className={`h-full w-full object-cover transition-opacity duration-300 ${
-              imgLoaded ? "opacity-100" : "opacity-0"
-            }`}
-            loading="lazy"
-            decoding="async"
-            onLoad={() => setImgLoaded(true)}
-            onError={() => {
-              setImgError(true);
-              setImgLoaded(false);
-            }}
-          />
-        </div>
+        <img
+          src={cover}
+          alt={a?.title || "activity"}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+          onError={() => setImgError(true)}
+        />
       ) : (
-        <div className="h-36 sm:h-44 w-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
-          No image
-        </div>
+        <FiImage className="text-gray-300 text-xl" />
       )}
-
-      <div className="p-3 sm:p-4 space-y-2.5">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-base sm:text-lg font-semibold line-clamp-1">
-            {a?.title || "Sans titre"}
-          </h3>
-
-          {/* Delete button */}
-          <button
-            onClick={() => onAskDelete(a)}
-            className="inline-flex items-center justify-center rounded-lg p-2 border border-red-200 text-red-600 hover:bg-red-50 active:bg-red-100 transition"
-            title="Supprimer l'activité"
-          >
-            <FiTrash2 className="text-[18px]" />
-          </button>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 text-[13px] sm:text-sm text-gray-600">
-          <span className="inline-flex items-center gap-1">
-            <FiCalendar className="shrink-0" />
-            {formatDate(a?.date)}
-          </span>
-          {a?.place && (
-            <span className="inline-flex items-center gap-1">
-              <FiMapPin className="shrink-0" />
-              {a.place}
-            </span>
-          )}
-        </div>
-
-        {a?.description && (
-          <p className="text-gray-700 text-[13px] sm:text-sm line-clamp-3">
-            {a.description}
-          </p>
-        )}
-
-        {Array.isArray(a?.tags) && a.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {a.tags.map((t, i) => (
-              <span
-                key={i}
-                className="text-[11px] sm:text-xs px-2 py-0.5 rounded-full border border-primary/20 text-primary"
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 };
+
+/* -------------------- tags -------------------- */
+const TagPills = ({ tags }) =>
+  Array.isArray(tags) && tags.length > 0 ? (
+    <div className="flex flex-wrap gap-1.5">
+      {tags.map((t, i) => (
+        <span
+          key={i}
+          className="rounded-full bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary-700"
+        >
+          {t}
+        </span>
+      ))}
+    </div>
+  ) : null;
 
 /* -------------------- list -------------------- */
 const ActivityList = () => {
@@ -254,180 +193,331 @@ const ActivityList = () => {
 
   const goto = (p) => setPage(Math.min(Math.max(1, p), pageCount));
 
-  return (
-    <div className="px-3 sm:px-5 lg:px-8 pt-4 sm:pt-6 pb-10">
-      {/* Header & controls (stacked on mobile) */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold">Activités</h1>
+  const count = filtered.length;
 
-        <div className="flex w-full sm:w-auto items-center gap-2">
-          <div className="relative flex-1 sm:flex-initial">
-            <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Rechercher (titre, lieu, tags…) "
-              className="w-full pl-10 pr-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 text-sm sm:text-base"
-            />
+  /* ------------------------------ empty state ----------------------------- */
+  const EmptyState = () => (
+    <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+        <FiCompass className="h-7 w-7" />
+      </div>
+      <h3 className="mt-4 text-base font-semibold text-gray-800">
+        Aucune activité
+      </h3>
+      <p className="mt-1 text-sm text-gray-500">
+        {dq
+          ? "Aucune activité ne correspond à cette recherche."
+          : "Ajoutez votre première activité pour commencer."}
+      </p>
+      {!dq && (
+        <Link
+          to="/add-activity"
+          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:opacity-95"
+        >
+          <FiPlusCircle className="h-4 w-4" />
+          Ajouter une activité
+        </Link>
+      )}
+    </div>
+  );
+
+  /* ------------------------------- skeletons ------------------------------ */
+  const RowSkeleton = () =>
+    Array.from({ length: 5 }).map((_, i) => (
+      <div
+        key={i}
+        className="flex items-center gap-4 border-t border-gray-100 px-4 py-4"
+      >
+        <div className="h-16 w-16 shrink-0 animate-pulse rounded-xl bg-gray-200" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 w-48 animate-pulse rounded bg-gray-200" />
+          <div className="h-3 w-32 animate-pulse rounded bg-gray-100" />
+          <div className="h-3 w-3/4 animate-pulse rounded bg-gray-100" />
+        </div>
+        <div className="h-9 w-9 animate-pulse rounded-lg bg-gray-100" />
+      </div>
+    ));
+
+  /* -------------------------------- row ----------------------------------- */
+  const MetaLine = ({ a }) => (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
+      <span className="inline-flex items-center gap-1">
+        <FiCalendar className="shrink-0" />
+        {formatDate(a?.date)}
+      </span>
+      {a?.place && (
+        <span className="inline-flex items-center gap-1">
+          <FiMapPin className="shrink-0" />
+          {a.place}
+        </span>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="px-4 py-6 sm:px-6">
+      <div className="w-full">
+        {/* ------------------------------ header ----------------------------- */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-800">Activités</h1>
+            <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500">
+              {count} activité{count > 1 ? "s" : ""}
+            </span>
           </div>
 
-          <button
-            onClick={fetchAll}
-            className="inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-primary text-white hover:opacity-95 active:opacity-90 transition"
-            title="Rafraîchir"
-          >
-            <FiRefreshCw className={loading ? "animate-spin" : ""} />
-            <span className="hidden sm:inline">Rafraîchir</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Rechercher…"
+                className="w-64 max-w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+              />
+            </div>
+
+            <button
+              onClick={fetchAll}
+              className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2.5 text-gray-600 transition hover:bg-gray-50"
+              disabled={loading}
+              title="Rafraîchir"
+            >
+              <FiRefreshCw className={loading ? "animate-spin" : ""} />
+            </button>
+
+            <Link
+              to="/add-activity"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:opacity-95"
+            >
+              <FiPlusCircle className="h-4 w-4" />
+              <span className="hidden sm:inline">Ajouter une activité</span>
+              <span className="sm:hidden">Ajouter</span>
+            </Link>
+          </div>
         </div>
+
+        {/* ------------------------------ content ---------------------------- */}
+        {/* Mobile cards */}
+        <div className="grid grid-cols-1 gap-3 sm:hidden">
+          {loading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-64 animate-pulse rounded-2xl border border-gray-100 bg-white shadow-sm"
+              />
+            ))
+          ) : count === 0 ? (
+            <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
+              <EmptyState />
+            </div>
+          ) : (
+            current.map((a) => (
+              <div
+                key={a?._id || a?.id}
+                className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm"
+              >
+                <Thumb a={a} className="h-40 w-full rounded-none" />
+                <div className="space-y-2 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="line-clamp-1 font-semibold text-gray-800">
+                      {a?.title || "Sans titre"}
+                    </h3>
+                    <button
+                      onClick={() => onAskDelete(a)}
+                      className="rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+                      title="Supprimer l'activité"
+                    >
+                      <FiTrash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <MetaLine a={a} />
+                  {a?.description && (
+                    <p className="line-clamp-2 text-sm text-gray-500">
+                      {a.description}
+                    </p>
+                  )}
+                  <TagPills tags={a?.tags} />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop rows */}
+        <div className="hidden overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm sm:block">
+          {loading ? (
+            <RowSkeleton />
+          ) : count === 0 ? (
+            <EmptyState />
+          ) : (
+            current.map((a) => (
+              <div
+                key={a?._id || a?.id}
+                className="flex items-center gap-4 border-t border-gray-100 px-4 py-4 transition first:border-t-0 hover:bg-gray-50/60"
+              >
+                <Thumb a={a} className="h-16 w-16 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate font-semibold text-gray-800">
+                    {a?.title || "Sans titre"}
+                  </h3>
+                  <div className="mt-0.5">
+                    <MetaLine a={a} />
+                  </div>
+                  {a?.description && (
+                    <p className="mt-1 line-clamp-2 text-sm text-gray-500">
+                      {a.description}
+                    </p>
+                  )}
+                  {Array.isArray(a?.tags) && a.tags.length > 0 && (
+                    <div className="mt-2">
+                      <TagPills tags={a.tags} />
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => onAskDelete(a)}
+                  className="shrink-0 rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+                  title="Supprimer l'activité"
+                >
+                  <FiTrash2 className="h-4 w-4" />
+                  <span className="sr-only">Supprimer</span>
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* ------------------------------ pagination ------------------------ */}
+        {!loading && count > 0 && (
+          <div className="mt-4 flex flex-col items-center justify-between gap-3 sm:flex-row">
+            <p className="text-sm text-gray-500">
+              Affichage {start + 1}-{Math.min(end, count)} sur {count} activité
+              {count > 1 ? "s" : ""}
+            </p>
+
+            <div className="flex items-center gap-3">
+              {/* Page size */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">Par page</span>
+                <select
+                  className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                >
+                  {[6, 9, 12, 24].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Pager */}
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => goto(page - 1)}
+                  disabled={page <= 1}
+                  className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <FiChevronLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline">Précédent</span>
+                </button>
+
+                {Array.from({ length: pageCount }).map((_, i) => {
+                  const n = i + 1;
+                  const show =
+                    n === 1 ||
+                    n === pageCount ||
+                    (n >= page - 1 && n <= page + 1);
+                  if (!show) {
+                    if (n === page - 2 || n === page + 2) {
+                      return (
+                        <span
+                          key={n}
+                          className="px-2 text-sm text-gray-400 select-none"
+                        >
+                          …
+                        </span>
+                      );
+                    }
+                    return null;
+                  }
+                  return (
+                    <button
+                      key={n}
+                      onClick={() => goto(n)}
+                      className={`min-w-[2rem] rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                        n === page
+                          ? "bg-primary text-white"
+                          : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={() => goto(page + 1)}
+                  disabled={page >= pageCount}
+                  className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span className="hidden sm:inline">Suivant</span>
+                  <FiChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Content */}
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <CardSkeleton key={i} />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm sm:text-base">
-          <p className="text-gray-700">
-            Aucune activité trouvée{dq ? " pour cette recherche." : "."}
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-            {current.map((a) => (
-              <ActivityCard
-                key={a?._id || a?.id}
-                a={a}
-                onAskDelete={onAskDelete}
-              />
-            ))}
-          </div>
-
-          {/* Pagination bar */}
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-xs sm:text-sm text-gray-600">
-              Affichage{" "}
-              <span className="font-medium">
-                {filtered.length === 0 ? 0 : start + 1}–{Math.min(end, filtered.length)}
-              </span>{" "}
-              sur <span className="font-medium">{filtered.length}</span>
-            </div>
-
-            {/* Page size */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm text-gray-600">Par page</span>
-              <select
-                className="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-              >
-                {[6, 9, 12, 24].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Pager: compact on mobile */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => goto(page - 1)}
-                className="px-3 py-2 rounded-lg border hover:bg-gray-50 disabled:opacity-50 text-sm"
-                disabled={page === 1}
-              >
-                Précédent
-              </button>
-              <span className="px-2 sm:px-3 py-2 text-xs sm:text-sm">
-                Page <span className="font-medium">{page}</span> / {pageCount}
-              </span>
-              <button
-                onClick={() => goto(page + 1)}
-                className="px-3 py-2 rounded-lg border hover:bg-gray-50 disabled:opacity-50 text-sm"
-                disabled={page === pageCount}
-              >
-                Suivant
-              </button>
-
-              {/* First/Last visible on ≥sm */}
-              <button
-                onClick={() => goto(1)}
-                className="hidden sm:inline-block px-3 py-2 rounded-lg border hover:bg-gray-50 disabled:opacity-50 text-sm"
-                disabled={page === 1}
-              >
-                «
-              </button>
-              <button
-                onClick={() => goto(pageCount)}
-                className="hidden sm:inline-block px-3 py-2 rounded-lg border hover:bg-gray-50 disabled:opacity-50 text-sm"
-                disabled={page === pageCount}
-              >
-                »
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Confirm delete modal */}
+      {/* ===================== Confirm delete modal ===================== */}
       {confirmOpen && (
         <div className="fixed inset-0 z-50">
           <div
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => !pending && setConfirmOpen(false)}
           />
-          <div className="absolute inset-0 flex items-end sm:items-center justify-center p-3 sm:p-4">
-            <div className="w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-xl border border-gray-200">
-              <div className="flex items-center justify-between p-3 sm:p-4 border-b">
-                <div className="flex items-center gap-2 text-red-600">
-                  <FiAlertTriangle />
-                  <h3 className="font-semibold text-sm sm:text-base">
-                    Supprimer l’activité
-                  </h3>
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="w-full max-w-md rounded-2xl border border-gray-100 bg-white p-6 shadow-2xl">
+              <div className="flex flex-col items-center text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-500">
+                  <FiAlertTriangle className="h-7 w-7" />
                 </div>
-                <button
-                  onClick={() => !pending && setConfirmOpen(false)}
-                  className="p-2 rounded-lg hover:bg-gray-100"
-                  title="Fermer"
-                >
-                  <FiX />
-                </button>
-              </div>
-
-              <div className="p-3 sm:p-4 space-y-1.5">
-                <p className="text-gray-700 text-sm">
+                <h3 className="mt-4 text-lg font-semibold text-gray-800">
+                  Supprimer cette activité ?
+                </h3>
+                <p className="mt-2 text-sm text-gray-500">
                   Êtes-vous sûr de vouloir supprimer{" "}
-                  <span className="font-medium">
+                  <span className="font-medium text-gray-700">
                     {target?.title || "cette activité"}
                   </span>{" "}
-                  ?
-                </p>
-                <p className="text-xs sm:text-sm text-gray-500">
-                  Cette action est irréversible.
+                  ? Cette action est irréversible.
                 </p>
               </div>
 
-              <div className="p-3 sm:p-4 flex items-center justify-end gap-2 sm:gap-3 border-t">
+              <div className="mt-6 flex items-center justify-center gap-3">
                 <button
                   onClick={() => !pending && setConfirmOpen(false)}
-                  className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 text-sm"
+                  className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
                   disabled={pending}
                 >
                   Annuler
                 </button>
                 <button
                   onClick={onConfirmDelete}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 text-sm"
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
                   disabled={pending}
                 >
-                  <FiTrash2 />
+                  {pending ? (
+                    <FiRefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FiTrash2 className="h-4 w-4" />
+                  )}
                   {pending ? "Suppression…" : "Supprimer"}
                 </button>
               </div>

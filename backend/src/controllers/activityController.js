@@ -2,6 +2,11 @@ import validator from "validator";
 import { v2 as cloudinary } from "cloudinary";
 import activityModel from "../models/activityModel.js";
 import stream from "stream";
+import {
+  getPagination,
+  buildSearchFilter,
+  paginate,
+} from "../utils/queryBuilder.js";
 
 // Make sure Cloudinary is configured at app boot:
 // cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: ..., api_secret: ... });
@@ -173,5 +178,74 @@ const getAllActivities = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/activities  (PUBLIC)
+ * Paginated list of PUBLISHED activities, newest first (by date).
+ * Query:
+ *  - q: search term across title, description, tags
+ *  - page, limit: pagination (limit capped at 50)
+ */
+const listPublicActivities = async (req, res) => {
+  try {
+    const { page, limit, skip } = getPagination(req.query, {
+      defaultLimit: 12,
+      maxLimit: 50,
+    });
 
-export { createActivity, getActivityById, getAllActivities, deleteActivity, getActivitiesCount };
+    const filter = {
+      isPublished: true,
+      ...buildSearchFilter(req.query.q, ["title", "description", "tags"]),
+    };
+
+    const { items, pagination } = await paginate(activityModel, {
+      filter,
+      sort: { date: -1 },
+      page,
+      limit,
+      skip,
+    });
+
+    return res.json({ success: true, data: items, pagination });
+  } catch (error) {
+    console.error("listPublicActivities error:", error);
+    return res.status(500).json({ success: false, message: "Server error." });
+  }
+};
+
+/**
+ * GET /api/activities/:id  (PUBLIC)
+ * Single PUBLISHED activity by id.
+ */
+const getPublicActivity = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id || !validator.isMongoId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid ID." });
+    }
+
+    const activity = await activityModel
+      .findOne({ _id: id, isPublished: true })
+      .lean();
+    if (!activity) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Activity not found." });
+    }
+
+    return res.json({ success: true, data: activity });
+  } catch (error) {
+    console.error("getPublicActivity error:", error);
+    return res.status(500).json({ success: false, message: "Server error." });
+  }
+};
+
+
+export {
+  createActivity,
+  getActivityById,
+  getAllActivities,
+  deleteActivity,
+  getActivitiesCount,
+  listPublicActivities,
+  getPublicActivity,
+};

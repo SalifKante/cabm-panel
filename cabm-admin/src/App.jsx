@@ -17,12 +17,33 @@ import AddProduct from "./pages/Admin/AddProduct";
 import ProductList from "./pages/Admin/ProductList";
 import EditProduct from "./pages/Admin/EditProduct.jsx"; // ← fixed trailing space
 
+// Orders (Admin)
+import OrderList from "./pages/Admin/OrderList";
+import OrderDetail from "./pages/Admin/OrderDetail";
+
+// Blog (Admin)
+import PostList from "./pages/Admin/PostList";
+import PostEditor from "./pages/Admin/PostEditor";
+import CommentModeration from "./pages/Admin/CommentModeration";
+
 // Services (Admin)
 import ServiceTable from "./pages/Admin/ServiceTable"; // ← add this page
+
+// Profile (Admin)
+import Profile from "./pages/Admin/Profile";
 
 export default function App() {
   const { aToken } = useContext(AdminContext);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Desktop collapse state, persisted across reloads
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem("sidebarCollapsed") === "true"
+  );
+
+  useEffect(() => {
+    localStorage.setItem("sidebarCollapsed", String(collapsed));
+  }, [collapsed]);
 
   // Close the mobile sidebar on resize to md+ (prevents overlap)
   useEffect(() => {
@@ -50,17 +71,22 @@ export default function App() {
         <div className="min-h-screen bg-[#F8F9FD]">
           <Navbar onToggleSidebar={() => setIsSidebarOpen((v) => !v)} />
 
-          {/* Content area is pushed below fixed navbar */}
-          <div className="pt-16 flex">
-            {/* Sidebar */}
-            <Sidebar
-              isOpen={isSidebarOpen}
-              onClose={() => setIsSidebarOpen(false)}
-            />
+          {/* Sidebar (fixed overlay on mobile, fixed rail on desktop) */}
+          <Sidebar
+            isOpen={isSidebarOpen}
+            onClose={() => setIsSidebarOpen(false)}
+            collapsed={collapsed}
+            onToggleCollapse={() => setCollapsed((v) => !v)}
+          />
 
-            {/* Main */}
-            <main className="flex-1 px-3 sm:px-6 py-4">
-              <Routes>
+          {/* Main respects sidebar width on desktop, with smooth transition */}
+          <main
+            className={[
+              "px-3 py-4 sm:px-6 transition-[margin] duration-300 ease-in-out",
+              collapsed ? "md:ml-[72px]" : "md:ml-64",
+            ].join(" ")}
+          >
+            <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
 
@@ -73,15 +99,27 @@ export default function App() {
                 <Route path="/products" element={<ProductList />} />
                 <Route path="/edit-product/:id" element={<EditProduct />} />
 
+                {/* Orders */}
+                <Route path="/orders" element={<OrderList />} />
+                <Route path="/orders/:id" element={<OrderDetail />} />
+
+                {/* Blog */}
+                <Route path="/blog" element={<PostList />} />
+                <Route path="/blog/new" element={<PostEditor />} />
+                <Route path="/blog/:id/edit" element={<PostEditor />} />
+                <Route path="/comments" element={<CommentModeration />} />
+
                 {/* Services (Admin) */}
                 <Route path="/services" element={<ServiceTable />} />
+
+                {/* Profile (Admin) */}
+                <Route path="/profile" element={<Profile />} />
                 {/* If you later want dedicated pages:
                     <Route path="/services/new" element={<ServiceCreate />} />
                     <Route path="/services/:id/edit" element={<ServiceEdit />} />
                  */}
               </Routes>
             </main>
-          </div>
         </div>
       ) : (
         // Public (login)

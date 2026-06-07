@@ -1,11 +1,11 @@
-// src/components/AddActivity.jsx
+// src/pages/Admin/AddActivity.jsx
 import React, { useContext, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { Link } from "react-router-dom";
 import { AdminContext } from "../../context/AdminContext";
 import {
   Plus,
-  Image as ImageIcon,
   Calendar as CalendarIcon,
   MapPin,
   Tag,
@@ -13,6 +13,8 @@ import {
   AlignLeft,
   X,
   Loader2,
+  UploadCloud,
+  ArrowLeft,
 } from "lucide-react";
 
 /* ---------- Utils ---------- */
@@ -55,6 +57,15 @@ const AddActivity = () => {
     setImages(files);
     setPreviews(files.map((f) => URL.createObjectURL(f)));
   };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files || []);
+    if (!files.length) return;
+    setImages(files);
+    setPreviews(files.map((f) => URL.createObjectURL(f)));
+  };
+  const handleDragOver = (e) => e.preventDefault();
 
   const removeImage = (idx) => {
     const nextFiles = images.filter((_, i) => i !== idx);
@@ -126,127 +137,154 @@ const AddActivity = () => {
     }
   };
 
+  /* ------------------------- shared UI helpers ------------------------- */
+  const inputClass =
+    "w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/15";
+  const labelClass =
+    "mb-1.5 flex items-center gap-2 text-sm font-medium text-gray-700";
+  const cardClass = "rounded-2xl border border-gray-100 bg-white p-6 shadow-sm";
+
   return (
-    <div className="mx-auto max-w-5xl px-3 sm:px-4 pt-4 sm:pt-6 pb-20">
-      {/* Header */}
-      <div className="mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">
-          Ajouter une activité
+    <div className="px-4 py-6 sm:px-6">
+      {/* ------------------------------ header ----------------------------- */}
+      <div className="mb-6">
+        <Link
+          to="/activities"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 transition hover:text-primary"
+        >
+          <ArrowLeft size={16} /> Retour aux activités
+        </Link>
+        <h1 className="mt-2 text-2xl font-bold text-gray-800">
+          Nouvelle activité
         </h1>
-        <p className="text-xs sm:text-sm text-gray-500 mt-1">
-          Formulaire rapide et optimisé pour mobile. Ajoutez des images et
-          séparez les tags par des virgules.
-        </p>
       </div>
 
-      {/* Card */}
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"
-      >
-        {/* Fields */}
-        <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-          {/* Titre */}
-          <div className="col-span-1">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
-              <Type size={16} />
-              Titre <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#3c388d]/40"
-              placeholder="Ex.: Inauguration du nouveau puits"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* ----------------------- LEFT: main content -------------------- */}
+          <div className={`${cardClass} space-y-5 lg:col-span-2`}>
+            {/* Titre */}
+            <div>
+              <label className={labelClass}>
+                <Type size={16} />
+                Titre <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                className={inputClass}
+                placeholder="Ex.: Inauguration du nouveau puits"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
 
-          {/* Date */}
-          <div className="col-span-1">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
-              <CalendarIcon size={16} />
-              Date <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="date"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#3c388d]/40"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-            <p className="text-[11px] text-gray-500 mt-1">
-              Envoyée au format <code>DD/MM/YYYY</code>.
-            </p>
-          </div>
-
-          {/* Lieu */}
-          <div className="col-span-1">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
-              <MapPin size={16} />
-              Lieu <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#3c388d]/40"
-              placeholder="Ex.: Bamako"
-              value={place}
-              onChange={(e) => setPlace(e.target.value)}
-            />
-          </div>
-
-          {/* Tags */}
-          <div className="col-span-1">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
-              <Tag size={16} />
-              Tags
-            </label>
-            <input
-              type="text"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#3c388d]/40"
-              placeholder="Ex.: agriculture, formation, eau"
-              value={tagsInput}
-              onChange={(e) => setTagsInput(e.target.value)}
-            />
-            {!!tags.asArray.length && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {tags.asArray.map((t) => (
-                  <span
-                    key={t}
-                    className="text-[11px] sm:text-xs px-2 py-1 rounded-full bg-[#3c388d]/10 text-[#3c388d] border border-[#3c388d]/30"
-                  >
-                    {t}
-                  </span>
-                ))}
+            {/* Date + Lieu */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>
+                  <CalendarIcon size={16} />
+                  Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+                <p className="mt-1 text-[11px] text-gray-400">
+                  Envoyée au format <code>DD/MM/YYYY</code>.
+                </p>
               </div>
-            )}
-            <p className="text-[11px] text-gray-500 mt-1">
-              Séparez par des virgules : <code>#tag1, #tag2</code>
-            </p>
+
+              <div>
+                <label className={labelClass}>
+                  <MapPin size={16} />
+                  Lieu <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  className={inputClass}
+                  placeholder="Ex.: Bamako"
+                  value={place}
+                  onChange={(e) => setPlace(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className={labelClass}>
+                <AlignLeft size={16} />
+                Description <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                rows={5}
+                className={`${inputClass} resize-y`}
+                placeholder="Décrivez brièvement l’activité…"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+
+            {/* Tags */}
+            <div>
+              <label className={labelClass}>
+                <Tag size={16} />
+                Tags
+              </label>
+              <input
+                type="text"
+                className={inputClass}
+                placeholder="Ex.: agriculture, formation, eau"
+                value={tagsInput}
+                onChange={(e) => setTagsInput(e.target.value)}
+              />
+              {!!tags.asArray.length && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {tags.asArray.map((t) => (
+                    <span
+                      key={t}
+                      className="rounded-full bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary-700"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <p className="mt-1 text-[11px] text-gray-400">
+                Séparez par des virgules : <code>#tag1, #tag2</code>
+              </p>
+            </div>
           </div>
 
-          {/* Description */}
-          <div className="md:col-span-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
-              <AlignLeft size={16} />
-              Description <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              rows={4}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#3c388d]/40"
-              placeholder="Décrivez brièvement l’activité…"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
+          {/* ----------------------- RIGHT: images ------------------------- */}
+          <div className={`${cardClass} lg:col-span-1`}>
+            <div className="mb-3 flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700">
+                Images <span className="text-red-500">*</span>
+              </label>
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+                {images.length} image{images.length > 1 ? "s" : ""}
+              </span>
+            </div>
 
-          {/* Images */}
-          <div className="md:col-span-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
-              <ImageIcon size={16} />
-              Images <span className="text-red-500">*</span>
-            </label>
-
-            {/* Mobile-friendly picker: big target */}
-            <div className="flex items-center gap-3">
+            {/* Drop zone */}
+            <div
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onClick={() => fileInputRef.current?.click()}
+              className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center transition hover:bg-gray-100"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-50 text-primary-700">
+                <UploadCloud size={24} />
+              </div>
+              <p className="mt-3 text-sm font-medium text-gray-700">
+                Glissez vos images ici
+              </p>
+              <p className="mt-0.5 text-xs text-gray-400">
+                ou cliquez pour parcourir
+              </p>
+              <p className="mt-2 text-[11px] text-gray-400">PNG, JPG, WEBP…</p>
               <input
                 ref={fileInputRef}
                 id="images"
@@ -256,87 +294,66 @@ const AddActivity = () => {
                 onChange={onPickFiles}
                 className="sr-only"
               />
-              <label
-                htmlFor="images"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-gray-50 px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 cursor-pointer"
-              >
-                <ImageIcon size={18} />
-                <span>Sélectionner des images</span>
-              </label>
-              <span className="hidden sm:block text-xs text-gray-500">
-                PNG, JPG, WEBP…
-              </span>
             </div>
 
             {!!previews.length && (
-              <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-3">
+              <div className="mt-4 grid grid-cols-2 gap-3">
                 {previews.map((src, i) => (
                   <div
                     key={i}
-                    className="relative group overflow-hidden rounded-lg border border-gray-200"
+                    className="group relative overflow-hidden rounded-lg border border-gray-200"
                   >
                     <img
                       src={src}
                       alt={`aperçu-${i + 1}`}
-                      className="w-full aspect-square object-cover"
+                      className="aspect-square w-full object-cover"
                     />
                     <button
                       type="button"
-                      onClick={() => removeImage(i)}
-                      className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-white/95 border border-gray-300 text-gray-700 shadow hover:bg-white"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeImage(i);
+                      }}
+                      className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 transition group-hover:opacity-100"
                       aria-label="Retirer l’image"
                       title="Retirer l’image"
                     >
-                      <X size={14} />
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-red-500">
+                        <X size={16} />
+                      </span>
                     </button>
                   </div>
                 ))}
               </div>
             )}
-            <p className="text-[11px] text-gray-500 mt-2">
-              Les fichiers seront envoyés en <code>multipart/form-data</code>.
-            </p>
           </div>
         </div>
 
-        {/* Footer — sticky on mobile for easy access */}
-        <div className="border-t border-gray-200">
-          <div className="px-4 sm:px-5 py-3 sm:py-4 grid grid-cols-1 sm:flex sm:items-center sm:justify-end gap-2 sm:gap-3">
-            <button
-              type="button"
-              className="w-full sm:w-auto px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-              onClick={() => {
-                setTitle("");
-                setDate("");
-                setPlace("");
-                setDescription("");
-                setTagsInput("");
-                setImages([]);
-                setPreviews([]);
-                if (fileInputRef.current) fileInputRef.current.value = "";
-              }}
-            >
-              Réinitialiser
-            </button>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-white hover:opacity-95 disabled:opacity-60"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Envoi en cours…
-                </>
-              ) : (
-                <>
-                  <Plus size={16} />
-                  Créer l’activité
-                </>
-              )}
-            </button>
-          </div>
+        {/* ------------------------------ actions ---------------------------- */}
+        <div className="mt-6 flex items-center justify-end gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+          <Link
+            to="/activities"
+            className="rounded-xl px-4 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-100"
+          >
+            Annuler
+          </Link>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:opacity-95 disabled:opacity-60"
+          >
+            {submitting ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Envoi en cours…
+              </>
+            ) : (
+              <>
+                <Plus size={16} />
+                Créer l’activité
+              </>
+            )}
+          </button>
         </div>
       </form>
     </div>

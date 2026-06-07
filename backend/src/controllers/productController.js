@@ -2,6 +2,16 @@ import productModel from "../models/productModel.js";
 import { v2 as cloudinary } from "cloudinary";
 import mongoose from "mongoose";
 import stream from "stream";
+import {
+  getPagination,
+  buildSearchFilter,
+  paginate,
+} from "../utils/queryBuilder.js";
+import {
+  runValidations,
+  createProductValidators,
+  updateProductValidators,
+} from "../validators/productValidators.js";
 
 // ✅ Cloudinary must be configured once at app boot:
 // cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: ..., api_secret: ... });
@@ -20,9 +30,31 @@ function uploadBufferToCloudinary(buffer, folder = "products") {
   });
 }
 
+/**
+ * Pick the optional e-commerce fields from a (sanitized) body and coerce them
+ * to their proper types. Only keys actually present (non-empty) are returned,
+ * so this is safe for both create and partial update.
+ */
+function pickEcommerceFields(body = {}) {
+  const out = {};
+  if (body.price !== undefined && body.price !== "") out.price = Number(body.price);
+  if (body.currency !== undefined && body.currency !== "")
+    out.currency = String(body.currency).trim();
+  if (body.unit !== undefined) out.unit = String(body.unit).trim();
+  if (body.deliveryDetails !== undefined)
+    out.deliveryDetails = String(body.deliveryDetails).trim();
+  if (body.stock !== undefined && body.stock !== "") out.stock = Number(body.stock);
+  if (body.category !== undefined) out.category = String(body.category).trim();
+  return out;
+}
+
 // ===================== ADMIN — Create Product =====================
 const createProduct = async (req, res) => {
   try {
+    // Validate text fields (runs after Multer; adminRoute.js untouched)
+    const valid = await runValidations(req, res, createProductValidators);
+    if (!valid) return;
+
     const { title, description } = req.body;
     const files = Array.isArray(req.files) ? req.files : [];
 
@@ -54,11 +86,12 @@ const createProduct = async (req, res) => {
     );
     const imageUrls = uploads.map((u) => u.secure_url);
 
-    // Création du document (respect strict de votre schéma)
+    // Création du document (respect strict de votre schéma + champs e-commerce)
     const product = new productModel({
       title: title.trim(),
       description: description.trim(),
       image: imageUrls, // array de strings (URLs)
+      ...pickEcommerceFields(req.body),
       // isActive: par défaut true (depuis le schema)
     });
 
@@ -79,10 +112,12 @@ const createProduct = async (req, res) => {
 };
 
 /**
- * GET /api/products
+ * GET /api/admin/all-products  (ADMIN)
  * Optional query:
  *  - q: text search on title
  *  - active: "true" | "false" to filter isActive
+ *
+ * NOTE: kept as-is for backward compatibility with the admin panel.
  */
 const listProducts = async (req, res) => {
   try {
@@ -99,6 +134,44 @@ const listProducts = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/products  (PUBLIC)
+ * Paginated list of ACTIVE products.
+ * Query:
+ *  - q: search term across title, description, category
+ *  - category: exact category filter
+ *  - page, limit: pagination (limit capped at 50)
+ */
+const listPublicProducts = async (req, res) => {
+  try {
+    const { page, limit, skip } = getPagination(req.query, {
+      defaultLimit: 12,
+      maxLimit: 50,
+    });
+
+    const filter = {
+      isActive: true,
+      ...buildSearchFilter(req.query.q, ["title", "description", "category"]),
+    };
+
+    const category = (req.query.category ?? "").toString().trim();
+    if (category) filter.category = category;
+
+    const { items, pagination } = await paginate(productModel, {
+      filter,
+      sort: { createdAt: -1 },
+      page,
+      limit,
+      skip,
+    });
+
+    return res.json({ success: true, data: items, pagination });
+  } catch (err) {
+    console.error("listPublicProducts error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 // Count products
 const getProductsCount = async (req, res) => {
   try {
@@ -110,7 +183,7 @@ const getProductsCount = async (req, res) => {
   }
 };
 
-/** GET /api/products/:id */
+/** GET /api/admin product fetch by id (ADMIN — used internally) */
 const getProduct = async (req, res) => {
   try {
     const item = await productModel.findById(req.params.id);
@@ -124,18 +197,48 @@ const getProduct = async (req, res) => {
 };
 
 /**
+ * GET /api/products/:id  (PUBLIC)
+ * Single ACTIVE product by id.
+ */
+const getPublicProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid product id" });
+    }
+
+    const item = await productModel.findOne({ _id: id, isActive: true }).lean();
+    if (!item) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
+    }
+
+    return res.json({ success: true, data: item });
+  } catch (err) {
+    console.error("getPublicProduct error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
  * PUT /api/admin/product/:id
  * Body: multipart/form-data
  *  - text: title?, description?, isActive? ("true"/"false")
+ *  - e-commerce: price?, currency?, unit?, deliveryDetails?, stock?, category?
  *  - control: replaceImages? ("true"/"false", default "false")
  *  - control: removeImages[]? (array of image URLs to drop from DB)
  *  - files: image[] (use field name "image")
  */
-
-
 const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Validate text fields (runs after Multer; adminRoute.js untouched)
+    const valid = await runValidations(req, res, updateProductValidators);
+    if (!valid) return;
 
     // Find current doc
     const doc = await productModel.findById(id);
@@ -162,6 +265,16 @@ const updateProduct = async (req, res) => {
     if (typeof title !== "undefined") update.title = String(title).trim();
     if (typeof description !== "undefined")
       update.description = String(description).trim();
+
+    // ---------- isActive (optional) ----------
+    if (typeof req.body.isActive !== "undefined" && req.body.isActive !== "") {
+      update.isActive =
+        String(req.body.isActive).toLowerCase() === "true" ||
+        req.body.isActive === true;
+    }
+
+    // ---------- E-commerce fields (optional) ----------
+    Object.assign(update, pickEcommerceFields(req.body));
 
     // ---------- Images logic (strict 1..10 total) ----------
     // Start from existing images
@@ -245,6 +358,7 @@ const updateProduct = async (req, res) => {
     // Save and return
     const updated = await productModel.findByIdAndUpdate(id, update, {
       new: true,
+      runValidators: true,
     });
     return res.json({
       success: true,
@@ -277,7 +391,6 @@ const deleteProduct = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
 
 const patchProductStatus = async (req, res) => {
   try {
@@ -324,13 +437,14 @@ const patchProductStatus = async (req, res) => {
   }
 };
 
-
 export {
   createProduct,
   listProducts,
+  listPublicProducts,
   getProductsCount,
   getProduct,
+  getPublicProduct,
   updateProduct,
   deleteProduct,
-  patchProductStatus
+  patchProductStatus,
 };

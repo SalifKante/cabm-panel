@@ -1,7 +1,7 @@
-import { createContext, useState } from "react";
+import { createContext, useState, useEffect, useCallback } from "react";
 export const AdminContext = createContext();
 import axios from "axios";
-import { toast } from "react-toastify"; 
+import { toast } from "react-toastify";
 
 
 const AdminContextProvider = (props) => {
@@ -10,6 +10,9 @@ const AdminContextProvider = (props) => {
   );
 
   const [activity, setActivity] = useState([]);
+
+  // Admin profile (full name + avatar), shown in the navbar and editable on /profile
+  const [admin, setAdmin] = useState(null);
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
   const getAllActivities = async () => {
@@ -24,7 +27,7 @@ const AdminContextProvider = (props) => {
       if (data?.success) {
         setActivity(data.activities);
       }else
-      { 
+      {
         toast.error(data?.message || "Failed to fetch activities");
         setActivity([]);
       }
@@ -32,6 +35,26 @@ const AdminContextProvider = (props) => {
       console.error("Error fetching activities:", error);
     }
   };
+
+  // Fetch the admin profile (used by the navbar + profile page)
+  const fetchAdminProfile = useCallback(async () => {
+    if (!backendUrl || !aToken) return;
+    try {
+      const { data } = await axios.get(`${backendUrl}/api/admin/profile`, {
+        headers: { aToken },
+      });
+      if (data?.success) setAdmin(data.data);
+    } catch (error) {
+      console.error("Error fetching admin profile:", error);
+    }
+  }, [backendUrl, aToken]);
+
+  // Load the profile whenever we have a token (login / refresh)
+  useEffect(() => {
+    if (aToken) fetchAdminProfile();
+    else setAdmin(null);
+  }, [aToken, fetchAdminProfile]);
+
   const value = {
     /* Add your context values here */
     aToken,
@@ -40,6 +63,9 @@ const AdminContextProvider = (props) => {
     activity,
     setActivity,
     getAllActivities,
+    admin,
+    setAdmin,
+    fetchAdminProfile,
   };
 
   console.log("Backend URL:", backendUrl); // Debugging line to check if the URL is loaded correctly

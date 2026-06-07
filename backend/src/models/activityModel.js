@@ -8,7 +8,10 @@ const ActivitySchema = new mongoose.Schema(
     description: { type: String, required: true, trim: true, maxlength: 2000 },
 
     image: { type: [String], default: [] },
-    tags: { type: [String], default: [] }
+    tags: { type: [String], default: [] },
+
+    // ---- Publication flag (Phase 3) ----
+    isPublished: { type: Boolean, default: true, index: true },
   },
   { timestamps: true }
 );

@@ -6,27 +6,26 @@ import {
   FiPlusCircle,
   FiList,
   FiPackage,
+  FiShoppingCart,
+  FiFileText,
+  FiMessageSquare,
+  FiTool,
+  FiLogOut,
+  FiChevronLeft,
+  FiChevronRight,
   FiX,
 } from "react-icons/fi";
 
 /**
  * Sidebar props:
- *  - isOpen: boolean (mobile off-canvas)
- *  - onClose: function
+ *  - isOpen: boolean     → mobile off-canvas open state
+ *  - onClose: function   → close mobile off-canvas
+ *  - collapsed: boolean  → desktop icon-only mode (persisted in localStorage by App)
+ *  - onToggleCollapse: function → toggle desktop collapse
  */
-const Sidebar = ({ isOpen, onClose }) => {
-  const { aToken } = useContext(AdminContext);
+const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
+  const { aToken, setAToken } = useContext(AdminContext);
   if (!aToken) return null;
-
-  // Base styles
-  const baseLink =
-    "group flex items-center gap-3 rounded-xl px-3 py-3 transition-all duration-200 outline-none ring-0 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#3c388d]/50";
-  const activeLink = "bg-primary text-white shadow-sm ring-1 ring-primary/20";
-  const inactiveLink = "text-slate-700 hover:text-primary hover:bg-slate-50";
-
-  const iconBase =
-    "text-xl shrink-0 transition-transform duration-200 group-hover:-translate-y-0.5";
-  const labelBase = "text-sm font-medium truncate";
 
   const sections = [
     {
@@ -40,29 +39,55 @@ const Sidebar = ({ isOpen, onClose }) => {
     {
       title: "Produits",
       items: [
-        // keep partial match for /products/add
         { to: "/products/add", label: "Ajouter un Produit", Icon: FiPlusCircle },
-        // IMPORTANT: exact match so it doesn't highlight when on /products/add
         { to: "/products", label: "Liste des Produits", Icon: FiPackage, end: true },
       ],
     },
     {
-      title: "Services",
+      title: "Commandes",
+      items: [{ to: "/orders", label: "Commandes", Icon: FiShoppingCart }],
+    },
+    {
+      title: "Blog",
       items: [
-        // We manage create/edit in the table modal, so one entry is enough
-        { to: "/services", label: "Liste des Services", Icon: FiList, end: true },
-        // If you later add a dedicated create route, uncomment below:
-        // { to: "/services/new", label: "Ajouter un Service", Icon: FiPlusCircle },
+        { to: "/blog", label: "Articles", Icon: FiFileText },
+        { to: "/comments", label: "Commentaires", Icon: FiMessageSquare },
       ],
+    },
+    {
+      title: "Services",
+      items: [{ to: "/services", label: "Liste des Services", Icon: FiTool, end: true }],
     },
   ];
 
+  const handleLogout = () => {
+    localStorage.removeItem("aToken");
+    setAToken("");
+    window.location.reload();
+  };
+
+  // Each nav link
+  const linkClass = ({ isActive }) =>
+    [
+      "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 outline-none",
+      "border-l-4",
+      collapsed ? "md:justify-center md:px-0" : "",
+      isActive
+        ? "bg-primary-800 text-white border-accent shadow-sm"
+        : "text-green-100/80 border-transparent hover:bg-primary-800/60 hover:text-white",
+    ].join(" ");
+
+  const labelClass = [
+    "whitespace-nowrap text-sm font-medium transition-all duration-200",
+    collapsed ? "md:hidden" : "opacity-100",
+  ].join(" ");
+
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Mobile backdrop */}
       <div
         onClick={onClose}
-        className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity md:hidden ${
+        className={`fixed inset-0 z-30 bg-black/40 backdrop-blur-sm transition-opacity md:hidden ${
           isOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
         aria-hidden={!isOpen}
@@ -71,55 +96,115 @@ const Sidebar = ({ isOpen, onClose }) => {
       {/* Sidebar panel */}
       <aside
         className={[
-          // base
-          "z-50 w-72 bg-white border-r shadow-sm",
-          // desktop: sticky under navbar (navbar is h-16)
-          "md:sticky md:top-16 md:h-[calc(100vh-4rem)]",
-          // mobile: off-canvas anchored under navbar
-          "fixed md:relative top-16 left-0 h-[calc(100vh-4rem)] md:translate-x-0 transition-transform duration-300",
+          "fixed left-0 top-16 bottom-0 z-40 flex flex-col",
+          "bg-primary-900 text-white shadow-xl",
+          "transition-[width,transform] duration-300 ease-in-out",
+          // width: mobile always full sidebar; desktop respects collapsed
+          "w-64",
+          collapsed ? "md:w-[72px]" : "md:w-64",
+          // mobile off-canvas; always visible on desktop
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         ].join(" ")}
         role="navigation"
         aria-label="Barre latérale"
       >
-        {/* Mobile close */}
-        <div className="md:hidden flex items-center justify-between px-4 py-3 border-b">
-          <span className="text-sm font-semibold text-slate-700">Menu</span>
+        {/* Header: logo + brand + collapse toggle */}
+        <div
+          className={[
+            "flex shrink-0 items-center gap-3 border-b border-white/10 px-4 h-16",
+            collapsed ? "md:justify-center md:px-2" : "justify-between",
+          ].join(" ")}
+        >
+          <div className="flex items-center gap-3 overflow-hidden">
+            <img
+              src="/logo/logo1.jpg"
+              alt="CABM"
+              className="h-10 w-10 shrink-0 rounded-full border-2 border-white/80 object-cover"
+            />
+            <span
+              className={[
+                "text-base font-bold tracking-wide whitespace-nowrap",
+                collapsed ? "md:hidden" : "",
+              ].join(" ")}
+            >
+              CABM Admin
+            </span>
+          </div>
+
+          {/* Desktop collapse toggle */}
           <button
+            type="button"
+            onClick={onToggleCollapse}
+            className={[
+              "hidden md:flex items-center justify-center rounded-lg p-1.5 text-white/80 transition hover:bg-white/10 hover:text-white",
+              collapsed ? "md:absolute md:-right-3 md:top-5 md:bg-primary-900 md:border md:border-white/15 md:shadow" : "",
+            ].join(" ")}
+            aria-label={collapsed ? "Déployer le menu" : "Réduire le menu"}
+            title={collapsed ? "Déployer" : "Réduire"}
+          >
+            {collapsed ? <FiChevronRight className="text-lg" /> : <FiChevronLeft className="text-lg" />}
+          </button>
+
+          {/* Mobile close */}
+          <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg p-2 hover:bg-slate-100"
+            className="md:hidden flex items-center justify-center rounded-lg p-2 text-white/80 hover:bg-white/10"
             aria-label="Fermer le menu"
           >
             <FiX className="text-xl" />
           </button>
         </div>
 
-        <div className="px-3 py-4 md:py-6 overflow-y-auto h-full">
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
           {sections.map((sec) => (
-            <div key={sec.title} className="mb-6">
-              <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <div key={sec.title} className="mb-5">
+              <p
+                className={[
+                  "px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-green-200/50",
+                  collapsed ? "md:hidden" : "",
+                ].join(" ")}
+              >
                 {sec.title}
               </p>
-              <ul className="space-y-2">
+              <ul className="space-y-1">
                 {sec.items.map(({ to, label, Icon, end }) => (
                   <li key={to}>
                     <NavLink
                       to={to}
                       end={!!end}
                       onClick={onClose}
-                      className={({ isActive }) =>
-                        `${baseLink} ${isActive ? activeLink : inactiveLink}`
-                      }
+                      className={linkClass}
+                      title={collapsed ? label : undefined}
                       aria-label={label}
                     >
-                      <Icon className={iconBase} />
-                      <span className={labelBase}>{label}</span>
+                      <Icon className="shrink-0 text-xl transition-transform duration-200 group-hover:scale-110" />
+                      <span className={labelClass}>{label}</span>
                     </NavLink>
                   </li>
                 ))}
               </ul>
             </div>
           ))}
+        </nav>
+
+        {/* Bottom: logout */}
+        <div className="shrink-0 border-t border-white/10 p-3">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className={[
+              "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
+              "text-green-100/80 transition-all duration-200 hover:bg-red-500/90 hover:text-white",
+              collapsed ? "md:justify-center md:px-0" : "",
+            ].join(" ")}
+            title={collapsed ? "Déconnexion" : undefined}
+            aria-label="Déconnexion"
+          >
+            <FiLogOut className="shrink-0 text-xl transition-transform duration-200 group-hover:translate-x-0.5" />
+            <span className={labelClass}>Déconnexion</span>
+          </button>
         </div>
       </aside>
     </>
