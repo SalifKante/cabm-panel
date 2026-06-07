@@ -274,7 +274,10 @@ const login = async (req, res) => {
     });
     setTokenCookie(res, token);
 
-    return res.json({ success: true, user: publicUser(user) });
+    // Also return the token in the body so SPAs hosted on a DIFFERENT domain than
+    // the API (where a cross-site cookie is blocked by the browser) can store it
+    // and send it as `Authorization: Bearer <token>`. requireAuth accepts both.
+    return res.json({ success: true, user: publicUser(user), token });
   } catch (error) {
     console.error("login error:", error);
     return res.status(500).json({ success: false, message: "Erreur serveur." });
