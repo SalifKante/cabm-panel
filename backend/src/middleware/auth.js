@@ -25,7 +25,7 @@ export async function requireAuth(req, res, next) {
   try {
     const user = await userModel
       .findById(userId)
-      .select("name email role isVerified phone avatar");
+      .select("name email role isVerified phone bio avatar");
 
     if (!user) {
       return res.status(401).json({ ok: false, error: "User not found" });
@@ -37,6 +37,7 @@ export async function requireAuth(req, res, next) {
       name: user.name,
       email: user.email,
       phone: user.phone,
+      bio: user.bio,
       avatar: user.avatar,
       role: user.role,
       isVerified: user.isVerified,
