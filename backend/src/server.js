@@ -126,6 +126,17 @@ app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
+// Lightweight JSON health check (uptime monitoring / deploy verification).
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV || "development",
+  });
+});
+
 app.use("/api/admin", adminRoute);
 app.use("/api/public", publicRoute);
 app.use("/api/products", productRoute);
