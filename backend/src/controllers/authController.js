@@ -1,4 +1,6 @@
 // src/controllers/authController.js
+import stream from "stream";
+import { v2 as cloudinary } from "cloudinary";
 import { body, validationResult } from "express-validator";
 import userModel from "../models/userModel.js";
 import {
@@ -11,6 +13,19 @@ import {
 } from "../utils/auth.js";
 import { sendMail } from "../utils/mailer.js";
 import { welcomeEmail, passwordResetEmail } from "../emails/templates.js";
+
+/** Upload an in-memory image buffer to Cloudinary and resolve with the result. */
+function uploadBufferToCloudinary(buffer, folder = "users/avatars") {
+  return new Promise((resolve, reject) => {
+    const passthrough = new stream.PassThrough();
+    passthrough.end(buffer);
+    const uploader = cloudinary.uploader.upload_stream(
+      { resource_type: "image", folder },
+      (err, result) => (err ? reject(err) : resolve(result))
+    );
+    passthrough.pipe(uploader);
+  });
+}
 
 // Client app base URL (the public site that renders verify/reset pages).
 // Trailing slash trimmed so links concatenate cleanly.
@@ -117,6 +132,8 @@ function publicUser(user) {
     id: user._id.toString(),
     name: user.name,
     email: user.email,
+    phone: user.phone,
+    bio: user.bio,
     role: user.role,
     isVerified: user.isVerified,
     avatar: user.avatar,
@@ -395,6 +412,51 @@ const getMe = (req, res) => {
   return res.json({ success: true, user: req.user });
 };
 
+/**
+ * PUT /api/auth/profile  (requireAuth)
+ * Update the current user's name / phone / bio and optional avatar (multipart
+ * field "avatar"). Email is intentionally NOT editable here.
+ */
+const updateProfile = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.user.id);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Utilisateur introuvable." });
+    }
+
+    const { name, phone, bio } = req.body;
+
+    if (typeof name !== "undefined") {
+      const trimmed = String(name).trim();
+      if (trimmed) user.name = trimmed;
+    }
+    if (typeof phone !== "undefined") user.phone = String(phone).trim();
+    if (typeof bio !== "undefined") user.bio = String(bio).trim();
+
+    // Optional new avatar (uploaded via Multer memory storage).
+    if (req.file?.buffer) {
+      const up = await uploadBufferToCloudinary(req.file.buffer, "users/avatars");
+      user.avatar = up.secure_url;
+    }
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: "Profil mis à jour avec succès.",
+      user: publicUser(user),
+    });
+  } catch (error) {
+    const msg = error?.message?.includes("File too large")
+      ? "Fichier trop volumineux (max 8MB)."
+      : error?.message || "Erreur serveur durant la mise à jour.";
+    console.error("updateProfile error:", error);
+    return res.status(500).json({ success: false, message: msg });
+  }
+};
+
 export {
   register,
   verifyEmail,
@@ -405,4 +467,5 @@ export {
   resetPassword,
   logout,
   getMe,
+  updateProfile,
 };

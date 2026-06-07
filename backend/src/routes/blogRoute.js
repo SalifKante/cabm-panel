@@ -1,7 +1,11 @@
 // src/routes/blogRoute.js
 import express from "express";
 import upload from "../middleware/multer.js";
-import { requireAuth, requireVerified } from "../middleware/auth.js";
+import {
+  requireAuth,
+  requireVerified,
+  attachUserIfPresent,
+} from "../middleware/auth.js";
 import requireAdminAny, {
   attachAdminIfPresent,
 } from "../middleware/adminBridge.js";
@@ -15,6 +19,7 @@ import {
   createComment,
   deleteOwnComment,
   toggleLike,
+  toggleCommentLike,
   subscribe,
   unsubscribe,
   // admin
@@ -57,6 +62,7 @@ blogRoute.get("/admin/posts/:id", requireAdminAny, getPostById);
 /* -------------------------------------------------------------------------- */
 blogRoute.post("/posts/:slug/comments", ...protect, createComment);
 blogRoute.post("/posts/:slug/like", ...protect, toggleLike);
+blogRoute.post("/comments/:id/like", ...protect, toggleCommentLike);
 blogRoute.delete("/comments/:id", ...protect, deleteOwnComment);
 blogRoute.post("/subscribe", ...protect, subscribe);
 
@@ -68,7 +74,7 @@ blogRoute.get("/categories", listCategories);
 // Optional admin auth: anonymous users get published posts only; an authenticated
 // admin (cookie or aToken) sees drafts too.
 blogRoute.get("/posts", attachAdminIfPresent, listPosts);
-blogRoute.get("/posts/:slug/comments", getPostComments);
+blogRoute.get("/posts/:slug/comments", attachUserIfPresent, getPostComments);
 blogRoute.get("/posts/:slug", getPost); // keep last among GET /posts*
 
 export default blogRoute;

@@ -50,6 +50,43 @@ export async function requireAuth(req, res, next) {
 }
 
 /**
+ * attachUserIfPresent — optional auth. If a valid token is present, populate
+ * req.user; otherwise continue anonymously. Never blocks the request. Useful on
+ * public endpoints that want to personalise output (e.g. "likedByMe").
+ */
+export async function attachUserIfPresent(req, res, next) {
+  try {
+    const cookieToken = req.cookies?.access_token;
+    const header = req.headers.authorization || "";
+    const bearerToken = header.startsWith("Bearer ") ? header.slice(7) : null;
+    const token = cookieToken || bearerToken;
+    if (!token) return next();
+
+    const payload = verifyToken(token);
+    const userId = payload?.id || payload?._id || payload?.sub;
+    if (!userId) return next();
+
+    const user = await userModel
+      .findById(userId)
+      .select("name email role isVerified avatar");
+    if (user) {
+      req.user = {
+        id: user._id.toString(),
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        role: user.role,
+        isVerified: user.isVerified,
+      };
+    }
+  } catch {
+    /* optional auth — ignore errors and continue anonymously */
+  }
+  next();
+}
+
+/**
  * requireAdmin — must run after requireAuth.
  */
 export function requireAdmin(req, res, next) {

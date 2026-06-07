@@ -19,6 +19,9 @@ const CommentSchema = new mongoose.Schema(
       ref: "Comment",
       default: null,
     }, // for threaded replies
+
+    // Users who liked this comment (toggle via POST /api/blog/comments/:id/like)
+    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     status: {
       type: String,
       enum: ["pending", "approved"],

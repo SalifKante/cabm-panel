@@ -2,6 +2,7 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
 import passport from "../config/passport.js";
+import upload from "../middleware/multer.js";
 import { requireAuth } from "../middleware/auth.js";
 import {
   register,
@@ -12,6 +13,7 @@ import {
   resetPassword,
   logout,
   getMe,
+  updateProfile,
 } from "../controllers/authController.js";
 
 const authRoute = express.Router();
@@ -66,6 +68,7 @@ authRoute.post("/forgot-password", forgotLimiter, forgotPassword);
 authRoute.post("/reset-password/:token", resetPassword);
 authRoute.post("/logout", logout);
 authRoute.get("/me", requireAuth, getMe);
+authRoute.put("/profile", requireAuth, upload.single("avatar"), updateProfile);
 
 /* ------------------------------ Google OAuth ------------------------------ */
 authRoute.get(

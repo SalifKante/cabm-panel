@@ -8,6 +8,7 @@ import postModel from "../models/postModel.js";
 import categoryModel from "../models/categoryModel.js";
 import commentModel from "../models/commentModel.js";
 import subscriberModel from "../models/subscriberModel.js";
+import userModel from "../models/userModel.js";
 import { sendMail } from "../utils/mailer.js";
 import { newPostEmail, commentApprovedEmail } from "../emails/templates.js";
 import {
@@ -57,23 +58,47 @@ async function runValidations(req, res, validations) {
   return false;
 }
 
-// Fire-and-forget blast to active subscribers. Each send is isolated so one
-// failure does not stop the rest.
-async function notifySubscribers(post) {
-  const subs = await subscriberModel
-    .find({ isActive: true })
-    .select("email unsubscribeToken")
-    .lean();
+// Email blast for a freshly published post. Recipients = ALL verified registered
+// users ∪ active newsletter subscribers (deduplicated by email). Each send is
+// isolated so one failure does not stop the rest.
+//
+// NOTE: this is awaited by the publish handlers so the emails actually go out on
+// serverless (Vercel) — a fire-and-forget after res.json() would be killed when
+// the function freezes. For very large audiences, move this to a queue/cron.
+async function notifyNewPost(post) {
+  const [subs, users] = await Promise.all([
+    subscriberModel.find({ isActive: true }).select("email unsubscribeToken").lean(),
+    userModel.find({ isVerified: true }).select("email").lean(),
+  ]);
 
+  // Map subscriber email -> unsubscribe token (so subscribers keep a working
+  // one-click unsubscribe link).
+  const tokenByEmail = new Map();
   for (const s of subs) {
-    const unsubscribeUrl = `${API_URL}/api/blog/unsubscribe/${s.unsubscribeToken}`;
+    if (s.email) tokenByEmail.set(s.email.toLowerCase(), s.unsubscribeToken);
+  }
+
+  // Union of all recipient emails (registered users + subscribers).
+  const recipients = new Set();
+  for (const u of users) if (u.email) recipients.add(u.email.toLowerCase());
+  for (const s of subs) if (s.email) recipients.add(s.email.toLowerCase());
+
+  let sent = 0;
+  for (const email of recipients) {
+    const token = tokenByEmail.get(email);
+    // Subscribers get their token link; registered-only users get the site link.
+    const unsubscribeUrl = token
+      ? `${API_URL}/api/blog/unsubscribe/${token}`
+      : FRONTEND_URL;
     const { html, text } = newPostEmail(post, unsubscribeUrl);
     try {
-      await sendMail(s.email, `Nouvel article — ${post.title}`, html, text);
+      await sendMail(email, `Nouvel article — ${post.title}`, html, text);
+      sent += 1;
     } catch (e) {
-      console.error("Subscriber email failed for", s.email, "-", e.message);
+      console.error("New-post email failed for", email, "-", e.message);
     }
   }
+  console.log(`📣 New-post blast "${post.title}": ${sent}/${recipients.size} sent`);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -209,11 +234,19 @@ const getPostComments = async (req, res) => {
       .populate("userId", "name avatar")
       .lean();
 
+    // Optionally mark which comments the current viewer liked (if authenticated).
+    const viewerId = req.user?.id ? String(req.user.id) : null;
+
     // Build threaded tree (parents with .replies).
     const map = new Map();
     const roots = [];
     comments.forEach((c) => {
       c.replies = [];
+      // Expose a like count + viewer state, but never the raw list of user ids.
+      const likeIds = Array.isArray(c.likes) ? c.likes.map(String) : [];
+      c.likesCount = likeIds.length;
+      c.likedByMe = viewerId ? likeIds.includes(viewerId) : false;
+      delete c.likes;
       map.set(c._id.toString(), c);
     });
     comments.forEach((c) => {
@@ -365,6 +398,43 @@ const toggleLike = async (req, res) => {
 };
 
 /**
+ * POST /api/blog/comments/:id/like
+ * Toggle the requester's like on a single (approved) comment.
+ */
+const toggleCommentLike = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: "ID invalide." });
+    }
+
+    const comment = await commentModel.findById(id);
+    if (!comment || comment.status !== "approved") {
+      return res
+        .status(404)
+        .json({ success: false, message: "Commentaire introuvable." });
+    }
+
+    const uid = req.user.id;
+    const idx = comment.likes.findIndex((x) => x.toString() === uid);
+    let liked;
+    if (idx >= 0) {
+      comment.likes.splice(idx, 1);
+      liked = false;
+    } else {
+      comment.likes.push(uid);
+      liked = true;
+    }
+    await comment.save();
+
+    return res.json({ success: true, liked, likesCount: comment.likes.length });
+  } catch (error) {
+    console.error("toggleCommentLike error:", error);
+    return res.status(500).json({ success: false, message: "Erreur serveur." });
+  }
+};
+
+/**
  * POST /api/blog/subscribe
  * Subscribe an email to blog notifications (defaults to the user's email).
  */
@@ -506,11 +576,13 @@ const createPost = async (req, res) => {
 
     await post.save();
 
-    // If created directly as published, notify subscribers (non-blocking).
+    // If created directly as published, notify all registered users + subscribers.
     if (willPublish) {
-      notifySubscribers(post).catch((e) =>
-        console.error("notifySubscribers failed:", e.message)
-      );
+      try {
+        await notifyNewPost(post);
+      } catch (e) {
+        console.error("notifyNewPost failed:", e.message);
+      }
     }
 
     return res.status(201).json({ success: true, data: post });
@@ -634,14 +706,21 @@ const publishPost = async (req, res) => {
         .json({ success: false, message: "Article introuvable." });
     }
 
+    const wasAlreadyPublished = post.status === "published" && !!post.publishedAt;
+
     post.status = "published";
     if (!post.publishedAt) post.publishedAt = new Date();
     await post.save();
 
-    // Non-blocking subscriber notification.
-    notifySubscribers(post).catch((e) =>
-      console.error("notifySubscribers failed:", e.message)
-    );
+    // Notify all registered users + subscribers — only on the first publish, so
+    // re-publishing an already-live post doesn't spam everyone again.
+    if (!wasAlreadyPublished) {
+      try {
+        await notifyNewPost(post);
+      } catch (e) {
+        console.error("notifyNewPost failed:", e.message);
+      }
+    }
 
     return res.json({ success: true, data: post });
   } catch (error) {
@@ -777,6 +856,7 @@ export {
   createComment,
   deleteOwnComment,
   toggleLike,
+  toggleCommentLike,
   subscribe,
   unsubscribe,
   // admin
