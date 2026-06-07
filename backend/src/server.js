@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import path from "path";
 import express from "express";
-import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import mongoSanitize from "express-mongo-sanitize";
@@ -32,6 +31,43 @@ const port = process.env.PORT || 8000;
 // Trust the first proxy hop (Vercel/Railway) so express-rate-limit and req.ip
 // use the real client IP from X-Forwarded-For.
 app.set("trust proxy", 1);
+
+// ---- CORS — MUST be the very first middleware ----
+// Running before helmet/sanitizers guarantees the preflight (OPTIONS) is answered
+// with the right headers even if a later middleware errors. For non-OPTIONS the
+// headers are set on res up-front, so they survive an eventual error response too.
+const ALLOWLIST = new Set([
+  "http://127.0.0.1:3031",
+  "http://127.0.0.1:3030",
+  "http://localhost:3031",
+  "http://localhost:3030",
+  "https://cabm-panel.vercel.app", // API domain (if hit directly)
+  "https://admin.cabmsarl.org",    // admin app
+  "https://www.cabmsarl.org",      // public site (www)
+  "https://cabmsarl.org",          // public site (apex, no www)
+]);
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && ALLOWLIST.has(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    // Credentials header is only meaningful with a specific (non-wildcard) origin.
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+  // Reflect whatever headers the browser asks for in the preflight, with a sane
+  // default — so a new custom header never silently breaks the preflight.
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    req.headers["access-control-request-headers"] ||
+      "Content-Type, aToken, Authorization"
+  );
+  res.setHeader("Access-Control-Max-Age", "86400");
+
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
 
 // Connect, then run idempotent startup seeders (admin user, then sample blog).
 connectDB()
@@ -68,58 +104,6 @@ app.use((req, res, next) => {
 app.use(mongoSanitize()); // strip $ / . operators from keys (NoSQL injection)
 app.use(sanitizeRequest); // strip HTML tags from string inputs (XSS)
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
-
-// ---- CORS: dynamic allow-list + proper preflight ----
-const ALLOWLIST = new Set([
-  "http://127.0.0.1:3031",
-  "http://127.0.0.1:3030",
-  "http://localhost:3031",
-  "http://localhost:3030",
-  "https://cabm-panel.vercel.app", // API domain (if you hit it directly)
-  "https://admin.cabmsarl.org",    // admin app
-  "https://www.cabmsarl.org",      // public site (www)
-  "https://cabmsarl.org",          // public site (apex, no www)
-]);
-
-// Handle preflight explicitly first (fast path)
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && ALLOWLIST.has(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
-  res.setHeader("Vary", "Origin");
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-  );
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, aToken, Authorization"
-  );
-  // Cookies are used for cross-site auth, so allow credentials:
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-
-  if (req.method === "OPTIONS") {
-    // optional debug:
-    // console.log("CORS preflight from:", origin);
-    return res.sendStatus(204);
-  }
-  next();
-});
-
-// Also apply cors() (helps with non-OPTIONS flows)
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      if (!origin) return cb(null, true); // same-origin/SSR/health checks
-      return ALLOWLIST.has(origin) ? cb(null, true) : cb(new Error("CORS"));
-    },
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "aToken", "Authorization"],
-    credentials: true, // send/receive the httpOnly auth cookie cross-site
-    optionsSuccessStatus: 204,
-  })
-);
 
 // ---- routes ----
 app.get("/", (req, res) => {
