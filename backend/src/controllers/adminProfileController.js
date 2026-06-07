@@ -1,6 +1,7 @@
 import { v2 as cloudinary } from "cloudinary";
 import stream from "stream";
 import AdminUser from "../models/AdminUser.js";
+import userModel from "../models/userModel.js";
 import { hashPassword, verifyPassword } from "../utils/auth.js";
 
 /* -------------------------------------------------------------------------- */
@@ -47,6 +48,38 @@ function uploadBufferToCloudinary(buffer, folder = "admin/avatars") {
   });
 }
 
+/**
+ * Mirror the admin's display name + avatar onto the matching User document.
+ * The admin's editable profile lives on AdminUser, but the Users list and the
+ * cookie-auth system read the User collection — so we keep them in sync, both on
+ * update and (as a backfill) whenever the profile is fetched. Best-effort: only
+ * writes when something actually differs. Never throws.
+ */
+async function syncAdminUser(admin) {
+  try {
+    const set = {};
+    const fullName = `${admin.firstName || ""} ${admin.lastName || ""}`.trim();
+    if (fullName) set.name = fullName;
+    if (admin.avatar?.url) set.avatar = admin.avatar.url;
+    if (!Object.keys(set).length) return;
+
+    const existing = await userModel
+      .findOne({ email: adminEmail() })
+      .select("name avatar");
+    if (!existing) return;
+
+    const needsUpdate =
+      (set.name && existing.name !== set.name) ||
+      (set.avatar && existing.avatar !== set.avatar);
+
+    if (needsUpdate) {
+      await userModel.updateOne({ _id: existing._id }, { $set: set });
+    }
+  } catch (e) {
+    console.warn("syncAdminUser failed:", e?.message || e);
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /*  GET /api/admin/profile                                                     */
 /* -------------------------------------------------------------------------- */
@@ -58,6 +91,8 @@ export const getAdminProfile = async (req, res) => {
         .status(500)
         .json({ success: false, message: "Profil administrateur indisponible." });
     }
+    // Backfill the matching User doc (so existing avatars show in the Users list).
+    await syncAdminUser(admin);
     return res.json({ success: true, data: publicProfile(admin) });
   } catch (error) {
     console.error("getAdminProfile error:", error);
@@ -101,6 +136,10 @@ export const updateAdminProfile = async (req, res) => {
     }
 
     await admin.save();
+
+    // Keep the matching admin User document in sync (it's what the Users list
+    // and the cookie-auth system read), so the admin's name/avatar show there too.
+    await syncAdminUser(admin);
 
     return res.json({
       success: true,

@@ -32,12 +32,14 @@ const formatDate = (d) => {
       });
 };
 
-const initials = (name = "") => {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  const a = parts[0]?.charAt(0) || "";
-  const b = parts[1]?.charAt(0) || "";
-  return (a + b).toUpperCase() || "?";
-};
+// Default avatar shown when a user has no profile picture (or it fails to load).
+const DefaultAvatar = ({ className = "h-10 w-10" }) => (
+  <div
+    className={`${className} flex shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400`}
+  >
+    <FiUser className="h-1/2 w-1/2" />
+  </div>
+);
 
 const RoleBadge = ({ role }) =>
   role === "admin" ? (
@@ -61,20 +63,21 @@ const VerifiedBadge = ({ ok }) =>
     </span>
   );
 
-const Avatar = ({ user, className = "h-10 w-10" }) =>
-  user?.avatar ? (
+const Avatar = ({ user, className = "h-10 w-10" }) => {
+  const [errored, setErrored] = useState(false);
+  const showPhoto = user?.avatar && !errored;
+
+  return showPhoto ? (
     <img
       src={user.avatar}
-      alt={user.name}
-      className={`${className} shrink-0 rounded-full object-cover`}
+      alt={user.name || "avatar"}
+      onError={() => setErrored(true)}
+      className={`${className} shrink-0 rounded-full bg-gray-100 object-cover`}
     />
   ) : (
-    <div
-      className={`${className} flex shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary-700`}
-    >
-      {initials(user?.name)}
-    </div>
+    <DefaultAvatar className={className} />
   );
+};
 
 const StatCard = ({ label, value, Icon, iconBg, iconColor }) => (
   <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
