@@ -24,6 +24,8 @@ import {
 const AddProduct = () => {
   const { aToken, backendUrl } = useContext(AdminContext);
 
+  // "shop" = boutique product (sold), "showcase" = homepage display only
+  const [type, setType] = useState("shop");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
@@ -47,14 +49,18 @@ const AddProduct = () => {
 
   const remaining = MAX_FILES - files.length;
 
+  // Showcase products are for display only — price is optional for them.
+  const isShowcase = type === "showcase";
+
   const errors = useMemo(() => {
     const e = {};
     if (!title.trim()) e.title = "Le titre est requis.";
     if (!description.trim()) e.description = "La description est requise.";
 
-    // price: required, numeric, >= 0
+    // price: required for shop products; optional for showcase.
+    // When provided, it must always be a non-negative number.
     if (String(price).trim() === "") {
-      e.price = "Le prix est requis.";
+      if (!isShowcase) e.price = "Le prix est requis.";
     } else if (Number.isNaN(Number(price)) || Number(price) < 0) {
       e.price = "Le prix doit être un nombre positif.";
     }
@@ -70,7 +76,7 @@ const AddProduct = () => {
     if (files.length === 0) e.image = "Sélectionnez au moins une image (max 10).";
     if (files.length > MAX_FILES) e.image = `Maximum ${MAX_FILES} images.`;
     return e;
-  }, [title, description, price, stock, files.length]);
+  }, [title, description, price, stock, files.length, isShowcase]);
 
   const buildPreviews = (fileList) => {
     const p = fileList.map((f, idx) => ({
@@ -152,6 +158,7 @@ const AddProduct = () => {
     previews.forEach((p) => URL.revokeObjectURL(p.url));
     setFiles([]);
     setPreviews([]);
+    setType("shop");
     setTitle("");
     setDescription("");
     setPrice("");
@@ -176,6 +183,7 @@ const AddProduct = () => {
     try {
       setSubmitting(true);
       const fd = new FormData();
+      fd.append("type", type);
       fd.append("title", title.trim());
       fd.append("description", description.trim());
       fd.append("price", String(price).trim());
@@ -254,6 +262,28 @@ const AddProduct = () => {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* ----------------------- LEFT: main content -------------------- */}
           <div className={`${cardClass} space-y-5 lg:col-span-2`}>
+            {/* Type de produit */}
+            <div>
+              <label className={labelClass}>
+                Type de produit <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                className={inputClass(false)}
+              >
+                <option value="shop">Produit boutique</option>
+                <option value="showcase">Produit vitrine</option>
+              </select>
+              {isShowcase && (
+                <p className="mt-1.5 flex items-start gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                  <FiAlertTriangle className="mt-0.5 shrink-0" />
+                  Ce produit sera affiché sur la page d'accueil uniquement. Les
+                  champs prix et stock sont optionnels.
+                </p>
+              )}
+            </div>
+
             {/* Title */}
             <div>
               <label className={labelClass}>
@@ -289,7 +319,12 @@ const AddProduct = () => {
               {/* Price (with fixed XOF label) */}
               <div>
                 <label className={labelClass}>
-                  Prix <span className="text-red-500">*</span>
+                  Prix{" "}
+                  {isShowcase ? (
+                    <span className="text-gray-400">(optionnel)</span>
+                  ) : (
+                    <span className="text-red-500">*</span>
+                  )}
                 </label>
                 <div className="relative">
                   <input

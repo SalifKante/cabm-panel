@@ -58,6 +58,22 @@ const StatusBadge = ({ active }) => (
   </span>
 );
 
+// Product type pill: "Boutique" (shop) in blue, "Vitrine" (showcase) in amber.
+const TypeBadge = ({ type }) => {
+  const isShowcase = type === "showcase";
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+        isShowcase
+          ? "bg-amber-50 text-amber-700"
+          : "bg-blue-50 text-blue-700"
+      }`}
+    >
+      {isShowcase ? "Vitrine" : "Boutique"}
+    </span>
+  );
+};
+
 const CategoryPill = ({ category }) =>
   category ? (
     <span className="inline-block rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700">
@@ -110,6 +126,7 @@ const ProductList = () => {
   const [products, setProducts] = useState([]);
   const [q, setQ] = useState("");
   const [category, setCategory] = useState(""); // "" = toutes les catégories
+  const [typeFilter, setTypeFilter] = useState("all"); // "all" | "shop" | "showcase"
   const [refreshKey, setRefreshKey] = useState(0);
   const [page, setPage] = useState(1);
 
@@ -163,9 +180,25 @@ const ProductList = () => {
     return Array.from(set).sort((a, b) => a.localeCompare(b, "fr"));
   }, [products]);
 
+  // Normalize a product's type (legacy products may not have one → "shop").
+  const productType = (p) => (p?.type === "showcase" ? "showcase" : "shop");
+
+  // Counts per type, for the filter tab labels.
+  const typeCounts = useMemo(() => {
+    let shop = 0;
+    let showcase = 0;
+    for (const p of products) {
+      if (productType(p) === "showcase") showcase += 1;
+      else shop += 1;
+    }
+    return { all: products.length, shop, showcase };
+  }, [products]);
+
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     return products.filter((p) => {
+      // Type filter tab
+      if (typeFilter !== "all" && productType(p) !== typeFilter) return false;
       // Category filter (exact match when one is selected)
       if (category && (p?.category || "") !== category) return false;
       // Text search
@@ -175,12 +208,12 @@ const ProductList = () => {
         p?.category?.toLowerCase().includes(s)
       );
     });
-  }, [products, q, category]);
+  }, [products, q, category, typeFilter]);
 
-  // Reset to the first page whenever the search query or category changes.
+  // Reset to the first page whenever the search query, category or type changes.
   useEffect(() => {
     setPage(1);
-  }, [q, category]);
+  }, [q, category, typeFilter]);
 
   // Pagination math (client-side over the filtered list).
   const total = filtered.length;
@@ -354,6 +387,9 @@ const ProductList = () => {
           <div className="mt-2 h-3 w-56 animate-pulse rounded bg-gray-100" />
         </td>
         <td className="px-4 py-3">
+          <div className="h-5 w-16 animate-pulse rounded-full bg-gray-200" />
+        </td>
+        <td className="px-4 py-3">
           <div className="h-3.5 w-20 animate-pulse rounded bg-gray-200" />
         </td>
         <td className="px-4 py-3">
@@ -446,6 +482,37 @@ const ProductList = () => {
           </div>
         </div>
 
+        {/* ------------------------------ type tabs -------------------------- */}
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {[
+            { key: "all", label: "Tous", count: typeCounts.all },
+            { key: "shop", label: "Boutique", count: typeCounts.shop },
+            { key: "showcase", label: "Vitrine", count: typeCounts.showcase },
+          ].map((tab) => {
+            const active = typeFilter === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setTypeFilter(tab.key)}
+                className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition ${
+                  active
+                    ? "bg-primary text-white shadow-sm"
+                    : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                {tab.label}
+                <span
+                  className={`inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-xs font-semibold ${
+                    active ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         {/* ----------------------------- mobile cards ----------------------- */}
         <div className="grid grid-cols-1 gap-3 sm:hidden">
           {loading ? (
@@ -480,6 +547,7 @@ const ProductList = () => {
                         <PriceCell product={p} />
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <TypeBadge type={p.type} />
                         <CategoryPill category={p.category} />
                         <StockBadge product={p} />
                       </div>
@@ -507,6 +575,7 @@ const ProductList = () => {
                 <tr>
                   <th className="px-4 py-3 w-20">Image</th>
                   <th className="px-4 py-3">Titre</th>
+                  <th className="px-4 py-3 w-28">Type</th>
                   <th className="px-4 py-3 w-32">Prix</th>
                   <th className="px-4 py-3 w-32">Catégorie</th>
                   <th className="px-4 py-3 w-20">Stock</th>
@@ -519,7 +588,7 @@ const ProductList = () => {
                   <TableSkeleton />
                 ) : count === 0 ? (
                     <tr>
-                      <td colSpan={7}>
+                      <td colSpan={8}>
                         <EmptyState />
                       </td>
                     </tr>
@@ -545,6 +614,9 @@ const ProductList = () => {
                               <div className="line-clamp-2 text-xs text-gray-400">
                                 {p.description}
                               </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <TypeBadge type={p.type} />
                             </td>
                             <td className="px-4 py-3">
                               <PriceCell product={p} />

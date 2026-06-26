@@ -17,6 +17,8 @@ const productRoute = express.Router();
  * Query params:
  *   - q         search term (matches title, description, category)
  *   - category  exact category filter
+ *   - type      "showcase" | "shop" — filters by product type when provided
+ *               (omitted → returns ALL active products, backward compatible)
  *   - page      page number (default 1)
  *   - limit     page size (default 12, max 50)
  * Response: { success, data: Product[], pagination }

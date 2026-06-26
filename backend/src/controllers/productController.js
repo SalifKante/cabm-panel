@@ -37,6 +37,10 @@ function uploadBufferToCloudinary(buffer, folder = "products") {
  */
 function pickEcommerceFields(body = {}) {
   const out = {};
+  if (body.type !== undefined && body.type !== "") {
+    const t = String(body.type).trim();
+    if (t === "showcase" || t === "shop") out.type = t;
+  }
   if (body.price !== undefined && body.price !== "") out.price = Number(body.price);
   if (body.currency !== undefined && body.currency !== "")
     out.currency = String(body.currency).trim();
@@ -140,6 +144,8 @@ const listProducts = async (req, res) => {
  * Query:
  *  - q: search term across title, description, category
  *  - category: exact category filter
+ *  - type: "showcase" | "shop" — when provided, filters by product type
+ *          (no type param → returns ALL active products, backward compatible)
  *  - page, limit: pagination (limit capped at 50)
  */
 const listPublicProducts = async (req, res) => {
@@ -156,6 +162,11 @@ const listPublicProducts = async (req, res) => {
 
     const category = (req.query.category ?? "").toString().trim();
     if (category) filter.category = category;
+
+    // Optional type filter — only applied for recognized values so an
+    // unknown/empty ?type= stays backward compatible (returns all products).
+    const type = (req.query.type ?? "").toString().trim();
+    if (type === "showcase" || type === "shop") filter.type = type;
 
     const { items, pagination } = await paginate(productModel, {
       filter,

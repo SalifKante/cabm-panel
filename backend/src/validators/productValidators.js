@@ -37,6 +37,10 @@ export const runValidations = async (req, res, validations) => {
 // `checkFalsy: true` skips empty strings (common from multipart forms) so these
 // remain genuinely optional.
 const optionalEcommerceFields = [
+  body("type")
+    .optional({ checkFalsy: true })
+    .isIn(["showcase", "shop"])
+    .withMessage('Le type doit être "showcase" ou "shop".'),
   body("price")
     .optional({ checkFalsy: true })
     .isFloat({ min: 0 })

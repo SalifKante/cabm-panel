@@ -5,6 +5,17 @@ const ProductSchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true, maxlength: 180 },
     description: { type: String, required: true, trim: true, maxlength: 5000 },
 
+    // ---- Product type ----
+    // "shop"     = boutique / e-commerce product (price, stock, cart)
+    // "showcase" = homepage catalog/presentation product (display only)
+    // Existing products default to "shop" so nothing breaks.
+    type: {
+      type: String,
+      enum: ["showcase", "shop"],
+      default: "shop",
+      index: true,
+    },
+
     // ---- E-commerce fields (Phase 2) ----
     price: { type: Number, min: 0, default: 0 },
     currency: { type: String, trim: true, maxlength: 8, default: "XOF" },

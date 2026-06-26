@@ -67,7 +67,7 @@ backend/
 │   │   ├── contactModel.js    # Contact message (name, email, phone, message)
 │   │   ├── orderModel.js      # Order (+ Counter for CABM-YYYY-NNNNN)
 │   │   ├── postModel.js       # Blog post (slug auto-gen, status, likes[], views)
-│   │   ├── productModel.js    # Product (+ price, currency, unit, deliveryDetails, stock, category)
+│   │   ├── productModel.js    # Product (+ type [showcase|shop], price, currency, unit, deliveryDetails, stock, category)
 │   │   ├── serviceModel.js    # Service (title, desc, icon, order, isActive)
 │   │   ├── subscriberModel.js # Newsletter subscriber (email, unsubscribeToken)
 │   │   └── userModel.js       # User (name, email, role, googleId, isVerified, tokens…)
@@ -146,8 +146,19 @@ admin panel onto the cookie system remains optional/pending.
 ### Public Products (`/api/products`) — Phase 2
 | Method | Path | Description |
 |---|---|---|
-| GET | `/` | Paginated active products; `?q=` search (title/desc/category), `?category=`, `?page=`, `?limit=` |
+| GET | `/` | Paginated active products; `?q=` search (title/desc/category), `?category=`, `?type=showcase\|shop`, `?page=`, `?limit=` |
 | GET | `/:id` | Single active product by id |
+
+**Product `type` — showcase vs shop.** Every product carries a `type` field
+(enum `"showcase" \| "shop"`, default `"shop"`). **`shop`** products live in the
+boutique (e-commerce: price, stock, cart). **`showcase`** products are
+catalog/presentation items shown on the **homepage only** (display-only; price &
+stock optional). The public list supports an optional `?type=` filter:
+`?type=showcase` returns homepage products, `?type=shop` returns boutique
+products, and **omitting** `?type=` returns **all** active products (backward
+compatible). The filter composes with `?q=`, `?category=`, and pagination. Admin
+list (`POST /api/admin/all-products`) returns **all** products regardless of type;
+`create-product` / `product/:id` accept the `type` field from the form data.
 
 ### Public Activities (`/api/activities`) — Phase 3
 | Method | Path | Description |

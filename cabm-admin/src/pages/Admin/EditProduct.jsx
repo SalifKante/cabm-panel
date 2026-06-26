@@ -32,6 +32,8 @@ const EditProduct = () => {
   const [saving, setSaving] = useState(false);
 
   // Form state
+  // "shop" = boutique product (sold), "showcase" = homepage display only
+  const [type, setType] = useState("shop");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
@@ -84,6 +86,7 @@ const EditProduct = () => {
           return;
         }
 
+        setType(found.type === "showcase" ? "showcase" : "shop");
         setTitle(found.title || "");
         setDescription(found.description || "");
         setPrice(found.price ?? "");
@@ -115,14 +118,18 @@ const EditProduct = () => {
     return MAX_FILES - keptCount - files.length;
   }, [replaceImages, files.length, existingImages, removeSet]);
 
+  // Showcase products are for display only — price is optional for them.
+  const isShowcase = type === "showcase";
+
   const errors = useMemo(() => {
     const e = {};
     if (!title.trim()) e.title = "Le titre est requis.";
     if (!description.trim()) e.description = "La description est requise.";
 
-    // price: required, numeric, >= 0
+    // price: required for shop products; optional for showcase.
+    // When provided, it must always be a non-negative number.
     if (String(price).trim() === "") {
-      e.price = "Le prix est requis.";
+      if (!isShowcase) e.price = "Le prix est requis.";
     } else if (Number.isNaN(Number(price)) || Number(price) < 0) {
       e.price = "Le prix doit être un nombre positif.";
     }
@@ -145,7 +152,7 @@ const EditProduct = () => {
 
     // file type/size validation is done on add, but keep a guard
     return e;
-  }, [title, description, price, stock, existingImages, removeSet, files.length, replaceImages]);
+  }, [title, description, price, stock, existingImages, removeSet, files.length, replaceImages, isShowcase]);
 
   const buildPreviews = (list) => {
     const p = list.map((f) => ({
@@ -251,6 +258,7 @@ const EditProduct = () => {
     try {
       setSaving(true);
       const fd = new FormData();
+      fd.append("type", type);
       fd.append("title", title.trim());
       fd.append("description", description.trim());
       fd.append("price", String(price).trim());
@@ -338,6 +346,28 @@ const EditProduct = () => {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* ----------------------- LEFT: main content -------------------- */}
           <div className={`${cardClass} space-y-5 lg:col-span-2`}>
+            {/* Type de produit */}
+            <div>
+              <label className={labelClass}>
+                Type de produit <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                className={inputClass(false)}
+              >
+                <option value="shop">Produit boutique</option>
+                <option value="showcase">Produit vitrine</option>
+              </select>
+              {isShowcase && (
+                <p className="mt-1.5 flex items-start gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                  <FiAlertTriangle className="mt-0.5 shrink-0" />
+                  Ce produit sera affiché sur la page d'accueil uniquement. Les
+                  champs prix et stock sont optionnels.
+                </p>
+              )}
+            </div>
+
             {/* Title */}
             <div>
               <label className={labelClass}>
@@ -373,7 +403,12 @@ const EditProduct = () => {
               {/* Price (with fixed XOF label) */}
               <div>
                 <label className={labelClass}>
-                  Prix <span className="text-red-500">*</span>
+                  Prix{" "}
+                  {isShowcase ? (
+                    <span className="text-gray-400">(optionnel)</span>
+                  ) : (
+                    <span className="text-red-500">*</span>
+                  )}
                 </label>
                 <div className="relative">
                   <input
